@@ -147,20 +147,21 @@ function httpsGet(url, apiKey) {
   });
 }
 
-async function paradisepagsCreateCharge({ identifier, amount, user, host }) {
+async function paradisepagsCreateCharge({ identifier, amount, user, host, cpf }) {
   const cfg = loadGatewayConfig();
   const baseUrl = cfg.paradisepags.base_url || "https://multi.paradisepags.com";
   const apiKey = cfg.paradisepags.secret_key;
   const amountCents = Math.round(amount * 100);
   const proto = host.startsWith("localhost") ? "http" : "https";
   const webhookUrl = proto + "://" + host + "/api/webhooks/paradisepags";
+  const doc = cpf || user.cpf || user.document || "";
   const payload = {
     amount: amountCents,
     description: "Deposito PIX - " + identifier,
     reference: identifier,
     source: "api_externa",
     postback_url: webhookUrl,
-    customer: { name: user.nome, email: user.email || user.telefone + "@flappix.local", phone: user.telefone, document: user.cpf || "" },
+    customer: { name: user.nome, email: user.email || user.telefone + "@flappix.local", phone: user.telefone, document: doc },
   };
   const resp = await httpsPost(baseUrl + "/api/v1/transaction.php", payload, apiKey);
   if (resp.error || resp.status === "error") throw new Error(resp.message || "Erro ao criar cobranca");
@@ -675,7 +676,8 @@ async function apiDeposito(req, res) {
     try {
       const identifier = "DEP_" + user.id + "_" + Date.now();
       const host = req.headers.host || ("localhost:" + PORT);
-      const result = await paradisepagsCreateCharge({ identifier, amount: valor, user, host });
+      const cpf = body.cpf || "";
+      const result = await paradisepagsCreateCharge({ identifier, amount: valor, user, host, cpf });
       txid = result.txid;
       qrcodeTexto = result.qrcode_texto;
       qrcodeBase64 = result.qrcode_base64;
