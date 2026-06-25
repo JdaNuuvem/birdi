@@ -396,14 +396,14 @@ function resolveStatic(reqPath) {
 
 function serveRawFile(filePath, res) {
   const ct = getContentType(filePath);
-  const body = fs.readFileSync(filePath);
+  const stat = fs.statSync(filePath);
   res.writeHead(200, {
     "content-type": ct,
-    "content-length": body.length,
+    "content-length": stat.size,
     "cache-control": "public, max-age=86400",
     "access-control-allow-origin": "*",
   });
-  res.end(body);
+  fs.createReadStream(filePath).pipe(res);
 }
 
 function serveFile(filePath, res, reqHost) {
@@ -413,21 +413,29 @@ function serveFile(filePath, res, reqHost) {
   const ct = getContentType(filePath);
   const cache = IMMUTABLE_EXTS.has(ext) ? "public, max-age=31536000, immutable" : "no-cache";
 
-  let body = fs.readFileSync(filePath);
-  if (isHtml) {
-    let html = body.toString("utf8");
-    if (isRSC) {
-      html = injectRSCBanner(html, filePath);
-      html = rewriteUrls(html, reqHost);
-    } else {
-      html = injectStaticBanner(html);
-      html = rewriteUrls(html, reqHost);
-    }
-    body = Buffer.from(html, "utf8");
+  if (!isHtml) {
+    const stat = fs.statSync(filePath);
+    res.writeHead(200, {
+      "content-type": ct,
+      "content-length": stat.size,
+      "cache-control": cache,
+      "access-control-allow-origin": "*",
+    });
+    return fs.createReadStream(filePath).pipe(res);
   }
 
+  let html = fs.readFileSync(filePath, "utf8");
+  if (isRSC) {
+    html = injectRSCBanner(html, filePath);
+    html = rewriteUrls(html, reqHost);
+  } else {
+    html = injectStaticBanner(html);
+    html = rewriteUrls(html, reqHost);
+  }
+  const body = Buffer.from(html, "utf8");
+
   res.writeHead(200, {
-    "content-type": isHtml ? "text/html; charset=utf-8" : ct,
+    "content-type": "text/html; charset=utf-8",
     "content-length": body.length,
     "cache-control": cache,
     "access-control-allow-origin": "*",
