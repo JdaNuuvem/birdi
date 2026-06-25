@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flap Copa — Clone (Prova de Testes)</title>
+<link rel="stylesheet" href="original.css">
+<style>
+#banner-prova {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 99999;
+  background: linear-gradient(135deg, #ff0000, #cc0000);
+  color: white; text-align: center; padding: 10px 20px;
+  font-size: 20px; font-weight: 900; letter-spacing: 2px;
+  text-transform: uppercase;
+  box-shadow: 0 4px 20px rgba(255,0,0,0.5);
+  border-bottom: 3px solid #ff4444;
+  animation: pulse-banner 2s ease-in-out infinite;
+}
+@keyframes pulse-banner { 0%,100%{opacity:1} 50%{opacity:.85} }
+#banner-prova small { display:block; font-size:11px; font-weight:400; letter-spacing:1px; opacity:.9; margin-top:2px; }
+body { padding-top: 56px !important; }
+header { top: 56px !important; }
+</style>
+</head>
+<body class="__variable_e36b36 antialiased">
+
+<div id="banner-prova">
+  ⚠️ PROVA DE TESTES — 25/06/2026 ⚠️
+  <small>Clone para análise de segurança — Ambiente controlado</small>
+</div>
+
+<main class="min-h-screen text-white" style="background:radial-gradient(110% 80% at 10% 0%,rgba(143,196,236,0.22) 0%,transparent 48%),linear-gradient(rgb(5,13,5) 0%,rgb(5,13,5) 60%,rgb(6,16,6) 100%)">
+
+  <!-- HEADER -->
+  <header class="fixed inset-x-0 top-0 z-50 border-b border-white/5 bg-[#040a04]/90 backdrop-blur-md">
+    <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+      <a class="flex items-center gap-2" href="/">
+        <span class="relative flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-400 to-green-600">
+          <img alt="Flap Copa" src="img/flapbird/bird.png" class="object-cover h-full w-full">
+        </span>
+        <span class="text-lg font-extrabold tracking-tight">Flap Copa</span>
+      </a>
+      <div class="flex items-center gap-3 sm:gap-5" id="header-buttons">
+        <button type="button" class="text-sm font-medium text-white/70 transition hover:text-white">Login</button>
+        <button type="button" class="flex items-center gap-2 rounded-full px-5 py-2 text-sm font-bold text-white transition hover:brightness-110" style="background:linear-gradient(135deg,#5cb85c,#7ed957);box-shadow:rgba(47,94,143,.533) 0 12px 28px">Cadastrar</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="relative overflow-hidden pt-16" id="hero-section">
+
+    <!-- Background GIFs (stacked, only 1 visible at a time) -->
+    <img src="img/flapbird/gif/brasil1.gif" alt="" aria-hidden="true" class="hero-bg pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300" data-mapa="brasil" style="opacity:1;z-index:1">
+    <img src="img/flapbird/gif/argentina.gif" alt="" aria-hidden="true" class="hero-bg pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300" data-mapa="argentina" style="opacity:0;z-index:1">
+    <img src="img/flapbird/gif/portuga.gif" alt="" aria-hidden="true" class="hero-bg pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300" data-mapa="portugal" style="opacity:0;z-index:1">
+    <img src="img/flapbird/gif/alemanha.gif" alt="" aria-hidden="true" class="hero-bg pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300" data-mapa="alemanha" style="opacity:0;z-index:1">
+    <img src="img/flapbird/gif/franca.gif" alt="" aria-hidden="true" class="hero-bg pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300" data-mapa="franca" style="opacity:0;z-index:1">
+    <img src="img/flapbird/gif/expanha.gif" alt="" aria-hidden="true" class="hero-bg pointer-events-none absolute inset-0 h-full w-full object-cover object-center transition-opacity duration-300" data-mapa="espanha" style="opacity:0;z-index:1">
+
+    <div class="pointer-events-none absolute inset-0" style="background:linear-gradient(180deg,rgba(5,13,5,.35) 0%,rgba(5,13,5,.72) 48%,#050d05 100%);z-index:2"></div>
+
+    <div class="relative mx-auto flex max-w-4xl flex-col items-center px-4 pb-16 pt-14 text-center sm:pt-20" style="z-index:3">
+
+      <!-- Online Badge -->
+      <span class="landing-online-badge online-badge mb-6 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm online-badge-hot">
+        <span class="online-pulse online-fire text-base leading-none">🔥</span>
+        <span class="online-pulse font-extrabold tabular-nums transition-colors duration-500 online-count-hot" id="online-count">2.159</span>
+        <span class="font-bold online-label-hot">Jogadores online agora</span>
+      </span>
+
+      <h1 class="text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl">
+        Voe, Desvie e <span class="bg-gradient-to-r from-green-300 via-lime-300 to-yellow-300 bg-clip-text text-transparent">Ganhe Dinheiro</span> de Verdade
+      </h1>
+
+      <!-- MAPA SELECTOR -->
+      <div class="mt-8" id="mapa-selector">
+        <div class="mx-auto mb-4 text-base font-semibold text-white sm:text-lg">Escolha sua seleção</div>
+        <div class="flex items-center justify-center gap-5">
+          <button type="button" aria-label="Mapa anterior" id="mapa-prev" class="flex h-16 w-16 items-center justify-center rounded-full text-6xl font-black leading-none transition hover:scale-110 sm:h-[4.5rem] sm:w-[4.5rem] sm:text-7xl" style="color:#6fdc6f;text-shadow:#7ed957 0 0 20px">‹</button>
+
+          <div class="relative h-44 w-44 sm:h-56 sm:w-56" id="mapa-circle">
+            <div class="absolute -inset-1.5 rounded-full opacity-95" id="mapa-glow" style="background:linear-gradient(135deg,#6fdc6f,#7ed957,#5cb85c)"></div>
+            <div class="absolute inset-0 overflow-hidden rounded-full border-4 border-[#050d05]">
+              <!-- Circle GIFs -->
+              <img src="img/flapbird/gif/brasil1.gif" alt="" aria-hidden="true" class="circle-bg absolute left-0 right-0 top-0 h-[78%] w-full object-cover object-center transition-opacity duration-200" data-mapa="brasil" style="opacity:1">
+              <img src="img/flapbird/gif/argentina.gif" alt="" aria-hidden="true" class="circle-bg absolute left-0 right-0 top-0 h-[78%] w-full object-cover object-center transition-opacity duration-200" data-mapa="argentina" style="opacity:0">
+              <img src="img/flapbird/gif/portuga.gif" alt="" aria-hidden="true" class="circle-bg absolute left-0 right-0 top-0 h-[78%] w-full object-cover object-center transition-opacity duration-200" data-mapa="portugal" style="opacity:0">
+              <img src="img/flapbird/gif/alemanha.gif" alt="" aria-hidden="true" class="circle-bg absolute left-0 right-0 top-0 h-[78%] w-full object-cover object-center transition-opacity duration-200" data-mapa="alemanha" style="opacity:0">
+              <img src="img/flapbird/gif/franca.gif" alt="" aria-hidden="true" class="circle-bg absolute left-0 right-0 top-0 h-[78%] w-full object-cover object-center transition-opacity duration-200" data-mapa="franca" style="opacity:0">
+              <img src="img/flapbird/gif/expanha.gif" alt="" aria-hidden="true" class="circle-bg absolute left-0 right-0 top-0 h-[78%] w-full object-cover object-center transition-opacity duration-200" data-mapa="espanha" style="opacity:0">
+              <div class="absolute bottom-0 left-0 right-0" id="mapa-ground" style="height:22%;background:#6abe30;border-top:3px solid #5a9e28"></div>
+              <!-- Pipes -->
+              <div class="absolute right-[12%] top-0 z-[1] w-[24%]" id="pipe-top" style="height:34%;background:linear-gradient(to right,#5cb85c,#7ed957,#4a9e4a);border:2px solid #2d6a2d"></div>
+              <div class="absolute bottom-[22%] right-[12%] z-[1] w-[24%]" id="pipe-bottom" style="height:34%;background:linear-gradient(to right,#5cb85c,#7ed957,#4a9e4a);border:2px solid #2d6a2d"></div>
+              <div class="absolute inset-0 bg-black/10"></div>
+              <!-- Bird sprites -->
+              <img src="img/flapbird/birds/bird-brasil.png" alt="" aria-hidden="true" class="circle-bird absolute left-[6%] top-1/2 z-[2] w-[54%] -translate-y-[62%] object-contain drop-shadow-md transition-opacity duration-200" data-mapa="brasil" style="opacity:1">
+              <img src="img/flapbird/birds/bird-argentina.png" alt="" aria-hidden="true" class="circle-bird absolute left-[6%] top-1/2 z-[2] w-[54%] -translate-y-[62%] object-contain drop-shadow-md transition-opacity duration-200" data-mapa="argentina" style="opacity:0">
+              <img src="img/flapbird/birds/bird-portugal.png" alt="" aria-hidden="true" class="circle-bird absolute left-[6%] top-1/2 z-[2] w-[54%] -translate-y-[62%] object-contain drop-shadow-md transition-opacity duration-200" data-mapa="portugal" style="opacity:0">
+              <img src="img/flapbird/birds/bird-alemanha.png" alt="" aria-hidden="true" class="circle-bird absolute left-[6%] top-1/2 z-[2] w-[54%] -translate-y-[62%] object-contain drop-shadow-md transition-opacity duration-200" data-mapa="alemanha" style="opacity:0">
+              <img src="img/flapbird/birds/bird-franca.png" alt="" aria-hidden="true" class="circle-bird absolute left-[6%] top-1/2 z-[2] w-[54%] -translate-y-[62%] object-contain drop-shadow-md transition-opacity duration-200" data-mapa="franca" style="opacity:0">
+              <img src="img/flapbird/birds/bird-espanha.png" alt="" aria-hidden="true" class="circle-bird absolute left-[6%] top-1/2 z-[2] w-[54%] -translate-y-[62%] object-contain drop-shadow-md transition-opacity duration-200" data-mapa="espanha" style="opacity:0">
+            </div>
+          </div>
+
+          <button type="button" aria-label="Próximo mapa" id="mapa-next" class="flex h-16 w-16 items-center justify-center rounded-full text-6xl font-black leading-none transition hover:scale-110 sm:h-[4.5rem] sm:w-[4.5rem] sm:text-7xl" style="color:#6fdc6f;text-shadow:#7ed957 0 0 20px">›</button>
+        </div>
+        <div class="mt-2 text-sm font-extrabold text-green-400" id="mapa-name">🇧🇷 Brasil</div>
+      </div>
+
+      <!-- Actions -->
+      <div class="mt-8 flex w-full max-w-sm flex-col items-center gap-4">
+        <button type="button" id="btn-jogar-gratis-hero" class="jogar-gratis-btn flex w-full items-center justify-center rounded-full px-11 py-[18px] text-lg font-black text-white transition hover:brightness-110">JOGAR GRÁTIS</button>
+        <button type="button" class="text-sm font-medium text-white underline underline-offset-4 transition hover:text-white/75" id="ja-tenho-conta">Já tenho conta</button>
+        <div class="mt-2 flex w-full max-w-md flex-col items-center gap-2.5">
+          <div class="flex flex-wrap items-center justify-center gap-2.5">
+            <div class="inline-flex items-center gap-2 rounded-full border border-green-400/75 bg-black/35 px-4 py-2 text-xs font-bold text-green-400 shadow-[0_0_14px_rgba(82,245,2,0.18)]"><span>✓</span>Saque via PIX</div>
+            <div class="inline-flex items-center gap-2 rounded-full border border-green-400/75 bg-black/35 px-4 py-2 text-xs font-bold text-green-400 shadow-[0_0_14px_rgba(82,245,2,0.18)]"><span>✓</span>Depósito mín. R$20</div>
+          </div>
+          <div class="inline-flex items-center gap-2 rounded-full border border-green-400/75 bg-black/35 px-4 py-2 text-xs font-bold text-green-400 shadow-[0_0_14px_rgba(82,245,2,0.18)]"><span>✓</span>Resultado na hora</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="border-y border-white/5 bg-[#071107]">
+    <div class="mx-auto grid max-w-5xl grid-cols-2 gap-8 px-4 py-10 sm:grid-cols-4">
+      <div class="text-center"><div class="text-2xl font-extrabold text-yellow-300 sm:text-3xl">+10.000</div><div class="mt-1 text-xs text-white/50 sm:text-sm">Jogadores Ativos</div></div>
+      <div class="text-center"><div class="text-2xl font-extrabold text-yellow-300 sm:text-3xl">R$ 1M+</div><div class="mt-1 text-xs text-white/50 sm:text-sm">Pagos via PIX</div></div>
+      <div class="text-center"><div class="text-2xl font-extrabold text-yellow-300 sm:text-3xl">24h</div><div class="mt-1 text-xs text-white/50 sm:text-sm">Saques Instantâneos</div></div>
+      <div class="text-center"><div class="text-2xl font-extrabold text-yellow-300 sm:text-3xl">100%</div><div class="mt-1 text-xs text-white/50 sm:text-sm">Seguro e Confiável</div></div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="mx-auto max-w-5xl px-4 py-20">
+    <h2 class="text-center text-3xl font-extrabold sm:text-4xl">Como <span class="text-emerald-300">funciona</span></h2>
+    <p class="mx-auto mt-3 max-w-md text-center text-sm text-white/50">Três passos entre você e o seu primeiro prêmio via PIX.</p>
+    <div class="mt-12 grid gap-6 sm:grid-cols-3">
+      <div class="rounded-3xl border border-white/5 bg-gradient-to-b from-white/[0.05] to-transparent p-7 transition hover:border-emerald-400/40"><div class="text-4xl">🐦</div><h3 class="mt-4 text-lg font-bold">1. Faça sua entrada</h3><p class="mt-2 text-sm leading-relaxed text-white/55">Escolha o valor da aposta a partir de R$ 1 e entre na partida. Sem burocracia.</p></div>
+      <div class="rounded-3xl border border-white/5 bg-gradient-to-b from-white/[0.05] to-transparent p-7 transition hover:border-emerald-400/40"><div class="text-4xl">🎯</div><h3 class="mt-4 text-lg font-bold">2. Voe e marque pontos</h3><p class="mt-2 text-sm leading-relaxed text-white/55">Cada cano que você passa vira dinheiro acumulado. Quanto mais longe, maior o prêmio.</p></div>
+      <div class="rounded-3xl border border-white/5 bg-gradient-to-b from-white/[0.05] to-transparent p-7 transition hover:border-emerald-400/40"><div class="text-4xl">💸</div><h3 class="mt-4 text-lg font-bold">3. Resgate via PIX</h3><p class="mt-2 text-sm leading-relaxed text-white/55">Bateu a meta? Resgate na hora e o valor cai direto no seu saldo. Saques 24h.</p></div>
+    </div>
+  </section>
+
+  <!-- TESTIMONIALS -->
+  <section class="border-y border-white/5 bg-[#071107] py-20">
+    <div class="mx-auto max-w-5xl px-4">
+      <h2 class="text-center text-3xl font-extrabold sm:text-4xl">Quem joga, <span class="text-yellow-300">recomenda</span></h2>
+      <div class="mt-12 grid gap-6 sm:grid-cols-3">
+        <div class="rounded-3xl border border-white/5 bg-[#050d05] p-7"><div class="text-sm text-yellow-300">★★★★★</div><p class="mt-3 text-sm leading-relaxed text-white/70">&ldquo;Comecei no teste grátis só pra ver e no mesmo dia já saquei meu primeiro prêmio. Viciante demais!&rdquo;</p><div class="mt-5 text-sm font-bold">Lucas M.</div><div class="text-xs text-white/40">São Paulo, SP</div></div>
+        <div class="rounded-3xl border border-white/5 bg-[#050d05] p-7"><div class="text-sm text-yellow-300">★★★★★</div><p class="mt-3 text-sm leading-relaxed text-white/70">&ldquo;O jogo é simples mas pagar de verdade muda tudo. Bati a meta 3 vezes essa semana.&rdquo;</p><div class="mt-5 text-sm font-bold">Amanda R.</div><div class="text-xs text-white/40">Recife, PE</div></div>
+        <div class="rounded-3xl border border-white/5 bg-[#050d05] p-7"><div class="text-sm text-yellow-300">★★★★★</div><p class="mt-3 text-sm leading-relaxed text-white/70">&ldquo;Achei que era pegadinha, mas o resgate caiu na hora. Melhor jogo de passarinho que já joguei.&rdquo;</p><div class="mt-5 text-sm font-bold">João P.</div><div class="text-xs text-white/40">Belo Horizonte, MG</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="relative overflow-hidden py-24 text-center">
+    <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(34,197,94,0.28),transparent_65%)]"></div>
+    <div class="relative mx-auto max-w-2xl px-4">
+      <h2 class="text-3xl font-extrabold sm:text-5xl">Pronto para <span class="text-emerald-300">voar</span>?</h2>
+      <p class="mt-4 text-sm text-white/55 sm:text-base">Teste grátis sem cadastro. Quando estiver pronto, jogue valendo e receba via PIX.</p>
+      <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <button type="button" id="btn-comecar-teste" class="rounded-full px-10 py-4 text-sm font-extrabold text-white transition hover:scale-105 hover:brightness-110" style="background:linear-gradient(135deg,#5cb85c,#7ed957);box-shadow:rgba(45,106,45,0.6) 0 14px 32px">🎮 COMEÇAR TESTE GRÁTIS</button>
+        <button type="button" class="rounded-full border-2 border-white/15 px-10 py-4 text-sm font-bold text-white/80 transition hover:border-white/40 hover:text-white">Jogar valendo</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-white/5 py-10">
+    <div class="mx-auto max-w-5xl px-4 text-center">
+      <div class="flex items-center justify-center gap-2">
+        <span class="relative flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-green-400 to-green-600">
+          <img alt="Flap Copa" src="img/flapbird/bird.png" class="object-cover h-full w-full">
+        </span>
+        <span class="font-extrabold">Flap Copa</span>
+      </div>
+      <p class="mx-auto mt-4 max-w-lg text-[11px] leading-relaxed text-white/30">Jogue com responsabilidade. Plataforma destinada a maiores de 18 anos. Apostas envolvem risco: nunca jogue mais do que pode perder.</p>
+      <p class="mt-3 text-[11px] text-white/20">&copy; 2026 Flap Copa. Todos os direitos reservados. | Clone de testes</p>
+    </div>
+  </footer>
+
+</main>
+
+<!-- LOGIN MODAL -->
+<div id="modal-login" style="position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.8);padding:16px">
+  <div style="background:#0d1a0d;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;max-width:380px;width:100%;position:relative">
+    <button id="modal-login-close" style="position:absolute;top:12px;right:16px;background:none;border:none;color:rgba(255,255,255,.5);font-size:22px;cursor:pointer;font-family:inherit">&times;</button>
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:4px">Entrar</h2>
+    <p style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:20px">Acesse sua conta e continue jogando.</p>
+    <input type="text" id="login-tel" placeholder="Telefone com DDD" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;font-size:15px;margin-bottom:10px;outline:none;font-family:inherit">
+    <input type="password" id="login-senha" placeholder="Senha" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;font-size:15px;margin-bottom:16px;outline:none;font-family:inherit">
+    <button id="btn-entrar" style="width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">ENTRAR</button>
+    <button id="link-cadastro" style="width:100%;margin-top:10px;background:none;border:none;color:rgba(255,255,255,.4);font-size:13px;cursor:pointer;font-family:inherit">Não tem conta? Cadastre-se</button>
+  </div>
+</div>
+
+<!-- CADASTRO MODAL -->
+<div id="modal-cadastro" style="position:fixed;inset:0;z-index:9000;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.8);padding:16px">
+  <div style="background:#0d1a0d;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;max-width:380px;width:100%;position:relative">
+    <button id="modal-cadastro-close" style="position:absolute;top:12px;right:16px;background:none;border:none;color:rgba(255,255,255,.5);font-size:22px;cursor:pointer;font-family:inherit">&times;</button>
+    <h2 style="font-size:22px;font-weight:800;margin-bottom:4px">Criar conta</h2>
+    <p style="font-size:13px;color:rgba(255,255,255,.5);margin-bottom:20px">Leva menos de 1 minuto. Jogue e saque via PIX.</p>
+    <input type="text" id="cad-nome" placeholder="Seu nome" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;font-size:15px;margin-bottom:10px;outline:none;font-family:inherit">
+    <input type="text" id="cad-tel" placeholder="Telefone com DDD" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;font-size:15px;margin-bottom:10px;outline:none;font-family:inherit">
+    <input type="password" id="cad-senha" placeholder="Senha (mín. 6 caracteres)" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;font-size:15px;margin-bottom:16px;outline:none;font-family:inherit">
+    <button id="btn-cadastrar" style="width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">CRIAR CONTA GRÁTIS</button>
+    <button id="link-login" style="width:100%;margin-top:10px;background:none;border:none;color:rgba(255,255,255,.4);font-size:13px;cursor:pointer;font-family:inherit">Já tem conta? Entrar</button>
+  </div>
+</div>
+
+<script>
+// ===== MAPA CAROUSEL =====
+const mapas = [
+  { id:'brasil',    nome:'Brasil',    bandeira:'🇧🇷', glow:'#6fdc6f,#7ed957,#5cb85c',       arrow:'#6fdc6f', arrowShadow:'#7ed957', pipe:['#5cb85c','#7ed957','#4a9e4a'], pipeStroke:'#2d6a2d', ground:'#6abe30', groundTop:'#5a9e28' },
+  { id:'argentina', nome:'Argentina', bandeira:'🇦🇷', glow:'#f2f7fb,#8fc4ec,#5d9fd6',       arrow:'#f2f7fb', arrowShadow:'#8fc4ec', pipe:['#5d9fd6','#8fc4ec','#4a86bd'], pipeStroke:'#2f5e8f', ground:'#7cc24e', groundTop:'#67a83e' },
+  { id:'portugal',  nome:'Portugal',  bandeira:'🇵🇹', glow:'#f9d29d,#f7b267,#e0853a',       arrow:'#f9d29d', arrowShadow:'#f7b267', pipe:['#c0392b','#e74c3c','#992d22'], pipeStroke:'#6e1f17', ground:'#3f9e4d', groundTop:'#338040' },
+  { id:'alemanha',  nome:'Alemanha',  bandeira:'🇩🇪', glow:'#b9cdde,#8aa9c1,#5a7a92',       arrow:'#b9cdde', arrowShadow:'#8aa9c1', pipe:['#3a3a3a','#5a5a5a','#262626'], pipeStroke:'#111',   ground:'#5fae3a', groundTop:'#4f9230' },
+  { id:'franca',    nome:'França',    bandeira:'🇫🇷', glow:'#9dbdea,#5b8ed6,#2a4d7a',       arrow:'#9dbdea', arrowShadow:'#5b8ed6', pipe:['#27408b','#4564b8','#1c2f66'], pipeStroke:'#13204a', ground:'#6cb73f', groundTop:'#5a9c33' },
+  { id:'espanha',   nome:'Espanha',   bandeira:'🇪🇸', glow:'#fbcf8b,#f6a85c,#d47a2a',       arrow:'#fbcf8b', arrowShadow:'#f6a85c', pipe:['#c8341f','#e8533a','#9c2716'], pipeStroke:'#6e1a0e', ground:'#7ab648', groundTop:'#659a3a' }
+];
+let currentMapa = 0;
+
+function setMapa(idx) {
+  currentMapa = ((idx % mapas.length) + mapas.length) % mapas.length;
+  const m = mapas[currentMapa];
+
+  // Update backgrounds
+  document.querySelectorAll('.hero-bg').forEach(img => {
+    img.style.opacity = img.dataset.mapa === m.id ? '1' : '0';
+  });
+
+  // Update circle
+  document.querySelectorAll('.circle-bg').forEach(img => {
+    img.style.opacity = img.dataset.mapa === m.id ? '1' : '0';
+  });
+  document.querySelectorAll('.circle-bird').forEach(img => {
+    img.style.opacity = img.dataset.mapa === m.id ? '1' : '0';
+  });
+
+  // Update glow
+  document.getElementById('mapa-glow').style.background = 'linear-gradient(135deg,' + m.glow + ')';
+
+  // Update arrows
+  document.getElementById('mapa-prev').style.color = m.arrow;
+  document.getElementById('mapa-prev').style.textShadow = m.arrowShadow + ' 0 0 20px';
+  document.getElementById('mapa-next').style.color = m.arrow;
+  document.getElementById('mapa-next').style.textShadow = m.arrowShadow + ' 0 0 20px';
+
+  // Update pipes
+  document.getElementById('pipe-top').style.background = 'linear-gradient(to right,' + m.pipe.join(',') + ')';
+  document.getElementById('pipe-top').style.borderColor = m.pipeStroke;
+  document.getElementById('pipe-bottom').style.background = 'linear-gradient(to right,' + m.pipe.join(',') + ')';
+  document.getElementById('pipe-bottom').style.borderColor = m.pipeStroke;
+
+  // Update ground
+  document.getElementById('mapa-ground').style.background = m.ground;
+  document.getElementById('mapa-ground').style.borderTopColor = m.groundTop;
+
+  // Update name
+  document.getElementById('mapa-name').textContent = m.bandeira + ' ' + m.nome;
+
+  // Update CTA button colors to match map
+  const ctaBtn = document.querySelector('.rounded-full.px-10.py-4.text-sm.font-extrabold');
+  if (ctaBtn) {
+    ctaBtn.style.background = 'linear-gradient(135deg,' + m.pipe.join(',') + ')';
+    ctaBtn.style.boxShadow = 'rgba(' + hexToRgb(m.pipeStroke).join(',') + ',0.6) 0 14px 32px';
+  }
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
+  return [r,g,b];
+}
+
+document.getElementById('mapa-prev').addEventListener('click', () => setMapa(currentMapa - 1));
+document.getElementById('mapa-next').addEventListener('click', () => setMapa(currentMapa + 1));
+
+// ===== JOGO REDIRECT =====
+
+document.querySelectorAll('.jogar-gratis-btn').forEach(btn => btn.addEventListener('click', () => {
+  location.href = 'jogar.html?mapa=' + mapas[currentMapa].id;
+}));
+document.getElementById('btn-comecar-teste')?.addEventListener('click', () => {
+  location.href = 'jogar.html?mapa=' + mapas[currentMapa].id;
+});
+
+// ===== LOGIN / CADASTRO MODALS =====
+function showModal(id) { document.getElementById(id).style.display = 'flex'; }
+function hideModal(id) { document.getElementById(id).style.display = 'none'; }
+function switchToLogin() { hideModal('modal-cadastro'); showModal('modal-login'); }
+function switchToCadastro() { hideModal('modal-login'); showModal('modal-cadastro'); }
+
+document.getElementById('modal-login-close')?.addEventListener('click', () => hideModal('modal-login'));
+document.getElementById('modal-cadastro-close')?.addEventListener('click', () => hideModal('modal-cadastro'));
+document.getElementById('ja-tenho-conta').addEventListener('click', () => showModal('modal-login'));
+
+// Login button in header
+document.querySelectorAll('button').forEach(b => {
+  if (b.textContent.trim() === 'Login') b.addEventListener('click', () => showModal('modal-login'));
+  if (b.textContent.trim() === 'Cadastrar') b.addEventListener('click', () => showModal('modal-cadastro'));
+  if (b.textContent.trim() === 'Jogar valendo') b.addEventListener('click', () => showModal('modal-login'));
+});
+
+// Modal switch links
+document.getElementById('link-cadastro').addEventListener('click', (e) => { e.preventDefault(); switchToCadastro(); });
+document.getElementById('link-login').addEventListener('click', (e) => { e.preventDefault(); switchToLogin(); });
+
+// Simulate login
+document.getElementById('btn-entrar').addEventListener('click', () => {
+  const tel = document.getElementById('login-tel').value.replace(/\D/g,'');
+  const senha = document.getElementById('login-senha').value;
+  if (!tel || !senha) return alert('Preencha todos os campos');
+  if (tel === '21985395831' && senha === 'Acesso1234') {
+    hideModal('modal-login');
+    location.href = 'painel.html';
+  } else {
+    alert('Telefone ou senha inválidos');
+  }
+});
+
+// Simulate cadastro
+document.getElementById('btn-cadastrar').addEventListener('click', () => {
+  const nome = document.getElementById('cad-nome').value.trim();
+  const tel = document.getElementById('cad-tel').value.replace(/\D/g,'');
+  const senha = document.getElementById('cad-senha').value;
+  if (!nome || !tel || !senha) return alert('Preencha todos os campos');
+  if (senha.length < 6) return alert('Senha deve ter no mínimo 6 caracteres');
+  alert('✅ Conta criada com sucesso!');
+  hideModal('modal-cadastro');
+  location.href = 'painel.html';
+});
+
+// ===== ONLINE COUNT SIMULATION =====
+setInterval(() => {
+  const el = document.getElementById('online-count');
+  const current = parseInt(el.textContent.replace(/\D/g,''));
+  const variation = Math.floor(Math.random() * 20) - 10;
+  el.textContent = (current + variation).toLocaleString('pt-BR');
+}, 8000);
+</script>
+</body>
+</html>

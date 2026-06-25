@@ -1,0 +1,17 @@
+{
+  "name": "flappix-clone",
+  "version": "1.0.0",
+  "description": "Flappix — Clone 100% Offline. Backend + Frontend + Gateway ParadisePags.",
+  "private": true,
+  "main": "clone-offline.js",
+  "scripts": {
+    "start": "node clone-offline.js",
+    "dev": "node clone-offline.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED"
+}

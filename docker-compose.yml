@@ -1,0 +1,31 @@
+# ─── Flappix Clone — docker-compose.yml ───────────────────────────────────────
+# Uso local: docker compose up -d
+# Coolify: detecta automaticamente este arquivo
+# ────────────────────────────────────────────────────────────────────────────────
+
+services:
+  flappix:
+    build: .
+    container_name: flappix-clone
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - PORT=${PORT:-8000}
+      - NODE_ENV=production
+      - AUTH_SECRET=${AUTH_SECRET:-clone-offline-flapcopa-2026}
+      - PARADISEPAGS_SECRET_KEY=${PARADISEPAGS_SECRET_KEY:-}
+      - PARADISEPAGS_BASE_URL=${PARADISEPAGS_BASE_URL:-https://multi.paradisepags.com}
+      - DATA_DIR=/app/data
+    volumes:
+      - flappix_data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:${PORT:-8000}/api/public/config', r => { process.exit(r.statusCode === 200 ? 0 : 1) })"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  flappix_data:
+    driver: local

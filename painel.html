@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Painel — Flap Copa</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:linear-gradient(180deg,#050d05 0%,#050d05 60%,#061006 100%);color:#fff;min-height:100vh}
+#banner-prova{position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#f00,#c00);color:#fff;text-align:center;padding:6px 12px;font-size:14px;font-weight:900;letter-spacing:1px;text-transform:uppercase;box-shadow:0 2px 12px rgba(255,0,0,.45);border-bottom:2px solid #f44}
+#banner-prova small{display:block;font-size:10px;font-weight:400;opacity:.9;margin-top:1px}
+body{padding-top:42px}
+
+header{position:fixed;top:42px;left:0;right:0;z-index:50;background:rgba(4,10,4,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.05)}
+.header-inner{display:flex;height:56px;align-items:center;justify-content:space-between;padding:0 16px;max-width:600px;margin:0 auto}
+.header-logo{display:flex;align-items:center;gap:8px;text-decoration:none;color:#fff}
+.header-logo .icon{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,#4ade80,#16a34a);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.header-logo .icon img{width:100%;height:100%;object-fit:cover}
+.header-logo span{font-size:15px;font-weight:800}
+.header-info{display:flex;flex-direction:column;align-items:flex-end}
+.header-info .label{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase}
+.header-info .valor{font-size:18px;font-weight:900;color:#6ee7b7}
+
+main{padding-top:100px;padding-bottom:80px;max-width:480px;margin:0 auto;padding-left:16px;padding-right:16px}
+
+.card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:20px;padding:20px}
+
+.user-row{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.user-avatar{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#4ade80,#16a34a);display:flex;align-items:center;justify-content:center;font-size:20px;overflow:hidden}
+.user-avatar img{width:100%;height:100%;object-fit:cover}
+.user-name{font-weight:700;font-size:16px}
+.user-sub{font-size:11px;color:rgba(255,255,255,.4)}
+.online-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#22c55e;margin-left:6px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.section-label{font-size:11px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:8px;margin-top:4px}
+
+.quick-values{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.quick-btn{padding:14px 8px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;font-size:16px;font-weight:800;cursor:pointer;transition:all .15s;text-align:center;font-family:inherit}
+.quick-btn:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2)}
+.quick-btn.sel{background:rgba(74,222,128,.12);border-color:#4ade80;color:#4ade80;box-shadow:0 0 16px rgba(74,222,128,.2)}
+
+.custom-row{display:flex;align-items:center;gap:8px;margin-bottom:16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:6px 12px}
+.custom-row span{font-size:16px;font-weight:800;color:rgba(255,255,255,.5)}
+.custom-row input{flex:1;background:none;border:none;color:#fff;font-size:16px;font-weight:800;outline:none;font-family:inherit}
+
+.map-section{margin-bottom:16px}
+.map-carousel{display:flex;align-items:center;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+.map-carousel::-webkit-scrollbar{display:none}
+.map-btn{flex:0 0 70px;height:70px;border-radius:14px;border:2px solid rgba(255,255,255,.08);background:rgba(0,0,0,.3);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;transition:all .15s;scroll-snap-align:center;font-family:inherit}
+.map-btn:hover{border-color:rgba(255,255,255,.2)}
+.map-btn.sel{border-color:#4ade80;box-shadow:0 0 14px rgba(74,222,128,.25)}
+.map-btn img{width:36px;height:36px;object-fit:contain;border-radius:6px}
+.map-btn span{font-size:9px;font-weight:600;color:rgba(255,255,255,.5)}
+.map-btn.sel span{color:#4ade80}
+
+.play-btn{width:100%;padding:16px;border-radius:14px;border:none;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:18px;font-weight:900;cursor:pointer;box-shadow:0 10px 28px rgba(34,197,94,.3);transition:transform .15s,filter .15s;font-family:inherit}
+.play-btn:hover{transform:scale(1.02);filter:brightness(1.1)}
+.play-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;filter:none}
+
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:40;background:rgba(4,10,4,.95);backdrop-filter:blur(12px);border-top:1px solid rgba(255,255,255,.05);display:flex;justify-content:center;gap:4px;padding:6px 10px}
+.nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;color:rgba(255,255,255,.4);font-size:10px;cursor:pointer;padding:4px 14px;border-radius:8px;transition:all .15s;font-family:inherit}
+.nav-btn:hover{color:#fff;background:rgba(255,255,255,.04)}
+.nav-btn.active{color:#4ade80;background:rgba(74,222,128,.08)}
+.nav-btn img{width:22px;height:22px;opacity:.6}
+.nav-btn.active img{opacity:1}
+
+.indicar-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.indicar-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:14px;padding:16px;text-align:center}
+.indicar-card .num{font-size:24px;font-weight:900;color:#fde047}
+.indicar-card .lab{font-size:10px;color:rgba(255,255,255,.4);margin-top:2px}
+
+.codigo-box{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 14px;margin-bottom:16px}
+.codigo-box code{flex:1;font-size:13px;font-family:monospace;color:#fde047;font-weight:700}
+.codigo-box button{padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:#fff;font-size:11px;cursor:pointer;font-family:inherit}
+
+.perfil-field{margin-bottom:12px}
+.perfil-field label{display:block;font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:4px}
+.perfil-field input{width:100%;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;font-size:14px;font-family:inherit;outline:none}
+.perfil-field input:focus{border-color:#4ade80}
+.perfil-field input:disabled{opacity:.5}
+
+.save-btn{padding:12px 24px;border-radius:12px;border:none;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit}
+
+.deposit-modal{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.8);display:none;align-items:center;justify-content:center}
+.deposit-modal.show{display:flex}
+.deposit-card{background:#0d1a0d;border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:24px;max-width:360px;width:90%;text-align:center}
+.deposit-card h3{margin-bottom:12px}
+.deposit-card input{width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;font-size:18px;font-weight:800;text-align:center;font-family:inherit;outline:none;margin-bottom:12px}
+.deposit-card .qr-btn{padding:12px 32px;border-radius:12px;border:none;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.deposit-card .close-btn{margin-top:8px;padding:8px 16px;background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-family:inherit}
+</style>
+</head>
+<body>
+
+<div id="banner-prova">⚠ PROVA DE TESTES — 25/06/2026 ⚠<small>Clone — Ambiente controlado</small></div>
+
+<header>
+  <div class="header-inner">
+    <a class="header-logo" href="index.html">
+      <span class="icon"><img src="img/flapbird/bird.png" alt="Flap Copa"></span>
+      <span>Flap Copa</span>
+    </a>
+    <div class="header-info">
+      <span class="label">Saldo</span>
+      <span class="valor" id="header-saldo">R$ 0,00</span>
+    </div>
+  </div>
+</header>
+
+<main id="page-content">
+  <!-- Depois preenchido pelo JS -->
+</main>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" data-page="jogar"><img src="img/flapbird/birds/bird-brasil.png" alt=""><span>Jogar</span></button>
+  <button class="nav-btn" data-page="depositar"><img src="img/flapbird/hero.png" alt=""><span>Depositar</span></button>
+  <button class="nav-btn" data-page="sacar"><img src="img/flapbird/hero.png" alt=""><span>Sacar</span></button>
+  <button class="nav-btn" data-page="indicar"><img src="img/flapbird/hero.png" alt=""><span>Indicar</span></button>
+  <button class="nav-btn" data-page="perfil"><img src="img/flapbird/hero.png" alt=""><span>Perfil</span></button>
+</nav>
+
+<script>
+const f = v => 'R$ ' + Number(v||0).toLocaleString('pt-BR',{minFrac:2,maxFrac:2});
+let saldo = 0;
+
+const MAPAS = [
+  { id:'espanha',   nome:'Espanha',   bandeira:'🇪🇸', bird:'bird-espanha.png' },
+  { id:'brasil',    nome:'Brasil',    bandeira:'🇧🇷', bird:'bird-brasil.png' },
+  { id:'argentina', nome:'Argentina', bandeira:'🇦🇷', bird:'bird-argentina.png' },
+  { id:'portugal',  nome:'Portugal',  bandeira:'🇵🇹', bird:'bird-portugal.png' },
+  { id:'alemanha',  nome:'Alemanha',  bandeira:'🇩🇪', bird:'bird-alemanha.png' },
+];
+let mapaAtual = 1; // Brasil
+
+function renderJogar() {
+  const m = MAPAS[mapaAtual];
+  const valor = 10;
+  return `
+    <div class="card" style="text-align:center">
+      <div class="user-row">
+        <div class="user-avatar"><img src="img/flapbird/bird.png" alt=""></div>
+        <div>
+          <div class="user-name">Flap Copa</div>
+          <div class="user-sub">Escolha sua entrada e voe<span class="online-dot"></span> online</div>
+        </div>
+      </div>
+      <div class="section-label">Valor de entrada</div>
+      <div class="quick-values" id="quick-values">
+        ${[1,2,5,10,20,50].map(v => '<button class="quick-btn'+(v===valor?' sel':'')+'" data-v="'+v+'">R$'+v+'</button>').join('')}
+      </div>
+      <div class="custom-row">
+        <span>R$</span>
+        <input type="number" id="custom-valor" value="${valor}" min="1" max="100">
+      </div>
+
+      <div class="section-label">Mapa</div>
+      <div class="map-carousel" id="map-carousel">
+        ${MAPAS.map((mp,i) => '<button class="map-btn'+(i===mapaAtual?' sel':'')+'" data-i="'+i+'"><img src="img/flapbird/birds/'+mp.bird+'" alt="'+mp.nome+'"><span>'+mp.nome+'</span></button>').join('')}
+      </div>
+      <div style="font-size:13px;font-weight:700;color:#4ade80;margin-bottom:12px">${m.bandeira} ${m.nome}</div>
+      <button class="play-btn" id="btn-jogar" onclick="location.href='jogar.html?mapa=${m.id}'">🎮 Jogar — ${f(valor)}</button>
+    </div>`;
+}
+
+function renderDepositar() {
+  return `
+    <div class="card" style="text-align:center">
+      <h3 style="margin-bottom:8px">Depositar</h3>
+      <p style="font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">Saldo: <b style="color:#6ee7b7">${f(saldo)}</b></p>
+      <input type="number" id="dep-valor" value="20" min="20" style="width:100%;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#fff;font-size:18px;font-weight:800;text-align:center;outline:none;font-family:inherit;margin-bottom:12px">
+      <button class="play-btn" onclick="simularDeposito()">Gerar QR Code PIX</button>
+      <div id="qr-result" style="margin-top:12px;display:none">
+        <p style="margin-bottom:8px">Pague o PIX e aguarde a confirmação</p>
+        <code id="qr-code" style="display:block;padding:10px;background:rgba(0,0,0,.3);border-radius:8px;font-size:11px;word-break:break-all;color:#fde047">...</code>
+        <button class="play-btn" style="margin-top:8px;font-size:13px" onclick="simularConfirmacao()">Simular confirmação</button>
+      </div>
+    </div>`;
+}
+
+function renderSacar() {
+  return `
+    <div class="card">
+      <h3 style="text-align:center;margin-bottom:8px">Sacar</h3>
+      <p style="text-align:center;font-size:12px;color:rgba(255,255,255,.4);margin-bottom:16px">Saldo: <b style="color:#6ee7b7">${f(saldo)}</b></p>
+      <div class="perfil-field"><label>Chave PIX</label><input type="text" placeholder="Sua chave PIX" id="saque-chave"></div>
+      <div class="perfil-field"><label>Valor</label><input type="number" id="saque-valor" value="20" min="20"></div>
+      <div class="perfil-field"><label>CPF</label><input type="text" placeholder="000.000.000-00" id="saque-cpf"></div>
+      <button class="play-btn" style="width:100%;margin-top:8px" onclick="simularSaque()">Solicitar Saque</button>
+      <div id="saque-msg" style="text-align:center;margin-top:12px;display:none;font-size:13px;color:#4ade80"></div>
+    </div>`;
+}
+
+function renderIndicar() {
+  return `
+    <div class="card">
+      <h3 style="text-align:center;margin-bottom:12px">Indicar Amigos</h3>
+      <div class="indicar-grid">
+        <div class="indicar-card"><div class="num">0</div><div class="lab">Indicados</div></div>
+        <div class="indicar-card"><div class="num">${f(0)}</div><div class="lab">Comissões</div></div>
+      </div>
+      <div class="section-label">Seu código</div>
+      <div class="codigo-box">
+        <code id="codigo-indicacao">ATFRX3</code>
+        <button onclick="navigator.clipboard.writeText('ATFRX3')">Copiar</button>
+      </div>
+      <p style="font-size:11px;color:rgba(255,255,255,.3);text-align:center">Comissão nível 1: 60%</p>
+    </div>`;
+}
+
+function renderPerfil() {
+  return `
+    <div class="card">
+      <h3 style="text-align:center;margin-bottom:16px">Perfil</h3>
+      <div class="perfil-field"><label>Nome</label><input type="text" value="habibes" disabled></div>
+      <div class="perfil-field"><label>Telefone</label><input type="text" value="(21) 98539-5831" disabled></div>
+      <div class="perfil-field"><label>Senha atual</label><input type="password" placeholder="Senha atual" id="senha-atual"></div>
+      <div class="perfil-field"><label>Nova senha</label><input type="password" placeholder="Nova senha (mín. 6)" id="nova-senha"></div>
+      <div class="perfil-field"><label>Confirmar nova senha</label><input type="password" placeholder="Confirmar" id="conf-senha"></div>
+      <button class="save-btn" onclick="simularTrocarSenha()">Salvar Alterações</button>
+    </div>`;
+}
+
+const pages = {
+  jogar: renderJogar,
+  depositar: renderDepositar,
+  sacar: renderSacar,
+  indicar: renderIndicar,
+  perfil: renderPerfil
+};
+
+let currentPage = 'jogar';
+
+function showPage(name) {
+  currentPage = name;
+  document.getElementById('page-content').innerHTML = pages[name]();
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === name));
+
+  if (name === 'jogar') {
+    attachJogarEvents();
+  }
+}
+
+function attachJogarEvents() {
+  document.querySelectorAll('.quick-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+      document.getElementById('custom-valor').value = btn.dataset.v;
+      const v = parseInt(btn.dataset.v);
+      document.getElementById('btn-jogar').textContent = '🎮 Jogar — ' + f(v);
+    });
+  });
+  document.getElementById('custom-valor').addEventListener('input', e => {
+    document.querySelectorAll('.quick-btn').forEach(b => b.classList.remove('sel'));
+    document.getElementById('btn-jogar').textContent = '🎮 Jogar — ' + f(parseInt(e.target.value)||0);
+  });
+  document.querySelectorAll('.map-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      mapaAtual = parseInt(btn.dataset.i);
+      showPage('jogar');
+    });
+  });
+}
+
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', () => showPage(btn.dataset.page));
+});
+
+// Simulações
+function simularDeposito() {
+  const v = parseInt(document.getElementById('dep-valor').value) || 20;
+  document.getElementById('qr-result').style.display = 'block';
+  document.getElementById('qr-code').textContent = '00020101021226820014br.gov.bcb.pix2560qrcode.a55scd.com.br/v1/'+Math.random().toString(36).substr(2,32)+'5204000053039865802BR5917SGCINTERMEDIACOES6008SAOPAULO62070503***6304'+(Math.floor(Math.random()*9000)+1000);
+}
+
+function simularConfirmacao() {
+  const v = parseInt(document.getElementById('dep-valor').value) || 20;
+  saldo += v;
+  document.getElementById('header-saldo').textContent = f(saldo);
+  document.getElementById('qr-result').style.display = 'none';
+  alert('✅ Depósito de ' + f(v) + ' confirmado!');
+  showPage(currentPage);
+}
+
+function simularSaque() {
+  const v = parseInt(document.getElementById('saque-valor').value) || 0;
+  const chave = document.getElementById('saque-chave').value;
+  if (!chave) return alert('Informe a chave PIX');
+  if (v < 20) return alert('Saque mínimo: R$ 20,00');
+  if (v > saldo) return alert('Saldo insuficiente');
+  saldo -= v;
+  document.getElementById('header-saldo').textContent = f(saldo);
+  document.getElementById('saque-msg').textContent = '✅ Saque de ' + f(v) + ' solicitado!';
+  document.getElementById('saque-msg').style.display = 'block';
+}
+
+function simularTrocarSenha() {
+  const a = document.getElementById('senha-atual').value;
+  const n = document.getElementById('nova-senha').value;
+  const c = document.getElementById('conf-senha').value;
+  if (!a || !n) return alert('Preencha todos os campos');
+  if (n !== c) return alert('Senhas não conferem');
+  if (n.length < 6) return alert('Senha deve ter no mínimo 6 caracteres');
+  alert('✅ Senha alterada com sucesso!');
+}
+
+// Init
+showPage('jogar');
+</script>
+</body>
+</html>
