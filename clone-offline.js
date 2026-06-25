@@ -787,13 +787,13 @@ async function apiSaque(req, res) {
 
   u.saldo = Math.round((u.saldo - valor) * 100) / 100;
   const saque = { id: nextId("saques"), user_id: user.id, valor,
-    chave_pix: body.chave_pix, cpf: body.cpf || null, status: "aprovado",
+    chave_pix: body.chave_pix, cpf: body.cpf || null, status: "pendente",
     created_at: new Date().toISOString() };
   readDB("saques").push(saque);
   writeDB("saques");
   writeDB("users");
 
-  sendJSON(res, { message: "Saque solicitado com sucesso", valor, saldo_novo: u.saldo });
+  sendJSON(res, { message: "Saque solicitado com sucesso. Aguardando aprovacao.", valor, saldo_novo: u.saldo, status: "pendente" });
 }
 
 async function apiSaqueAfiliado(req, res) {
@@ -1102,6 +1102,43 @@ async function apiAdminRefund(req, res) {
   }
 }
 
+// --- Admin: Aprovar/Rejeitar Saque ---
+async function apiAdminAprovarSaque(req, res) {
+  const user = getAuthUser(req);
+  if (!isAdmin(user)) return sendJSON(res, { error: "Acesso negado." }, 403);
+  const body = await parseBody(req);
+  if (!body || !body.id) return sendJSON(res, { error: "id obrigatorio" }, 400);
+  const saques = readDB("saques");
+  const s = saques.find(ss => ss.id === body.id || String(ss.id) === String(body.id));
+  if (!s) return sendJSON(res, { error: "Saque nao encontrado" }, 404);
+  if (s.status !== "pendente") return sendJSON(res, { error: "Saque ja foi processado" }, 400);
+  s.status = "aprovado";
+  s.processado_em = new Date().toISOString();
+  writeDB("saques");
+  sendJSON(res, { message: "Saque aprovado com sucesso" });
+}
+
+async function apiAdminRejeitarSaque(req, res) {
+  const user = getAuthUser(req);
+  if (!isAdmin(user)) return sendJSON(res, { error: "Acesso negado." }, 403);
+  const body = await parseBody(req);
+  if (!body || !body.id) return sendJSON(res, { error: "id obrigatorio" }, 400);
+  const saques = readDB("saques");
+  const s = saques.find(ss => ss.id === body.id || String(ss.id) === String(body.id));
+  if (!s) return sendJSON(res, { error: "Saque nao encontrado" }, 404);
+  if (s.status !== "pendente") return sendJSON(res, { error: "Saque ja foi processado" }, 400);
+  s.status = "rejeitado";
+  s.processado_em = new Date().toISOString();
+  // Estorna o valor para o usuario
+  const u = getUserById(s.user_id);
+  if (u) {
+    u.saldo = Math.round((u.saldo + s.valor) * 100) / 100;
+    writeDB("users");
+  }
+  writeDB("saques");
+  sendJSON(res, { message: "Saque rejeitado. Valor estornado ao usuario.", valor_estornado: s.valor });
+}
+
 // --- Roteamento ---
 const API_ROUTES = {
   "GET /api/public/config": apiPublicConfig,
@@ -1132,6 +1169,8 @@ const API_ROUTES = {
   "POST /api/webhooks/paradisepags": apiWebhookParadise,
   "POST /api/admin/test-gateway": apiAdminTestGateway,
   "POST /api/admin/refund": apiAdminRefund,
+  "POST /api/admin/saque/aprovar": apiAdminAprovarSaque,
+  "POST /api/admin/saque/rejeitar": apiAdminRejeitarSaque,
 };
 
 // --- Server ---
