@@ -319,7 +319,9 @@ function injectStaticBanner(html) {
 }
 
 function rewriteUrls(html, reqHost) {
-  const base = "http://" + (reqHost || ("localhost:" + PORT));
+  const isLocal = !reqHost || reqHost.startsWith("localhost") || reqHost.startsWith("127.");
+  const proto = isLocal ? "http" : "https";
+  const base = proto + "://" + (reqHost || ("localhost:" + PORT));
   return html.replace(/(src|href|action)=["'](?!https?:\/\/)(?!data:)(\/)/gi,
     (m, attr, slash) => attr + '="' + base + slash);
 }
