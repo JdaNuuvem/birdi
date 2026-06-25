@@ -167,7 +167,7 @@ async function paradisepagsCreateCharge({ identifier, amount, user, host }) {
   if (resp.error || resp.status === "error") throw new Error(resp.message || "Erro ao criar cobranca");
   return {
     txid: String(resp.transaction_id || identifier),
-    qrcode_imagem: "",
+    qrcode_imagem: resp.qr_code_base64 ? ("data:image/png;base64," + resp.qr_code_base64) : "",
     qrcode_base64: resp.qr_code_base64 || "",
     qrcode_texto: resp.qr_code || "",
     checkout_url: null,
@@ -682,7 +682,7 @@ async function apiDeposito(req, res) {
       txid = result.txid;
       qrcodeTexto = result.qrcode_texto;
       qrcodeBase64 = result.qrcode_base64;
-      qrcodeImagem = qrcodeBase64 || "data:image/png;base64,iVBORw0KGgo==";
+      qrcodeImagem = result.qrcode_imagem || qrcodeBase64 || "data:image/png;base64,iVBORw0KGgo==";
       gateway = "paradisepags";
     } catch (e) {
       console.error("[DEPOSITO Paradise ERROR]", e.message, e.stack && e.stack.substring(0, 200));
