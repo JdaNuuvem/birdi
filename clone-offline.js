@@ -173,10 +173,8 @@ async function paradisepagsCheckStatus(txid) {
 
 // --- Banners ---
 // Banner DOM (para paginas HTML estaticas que nao usam React hydration)
-const BANNER_DOM = '<div id="banner-prova" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#f00,#c00);color:#fff;text-align:center;padding:10px 20px;font-size:20px;font-weight:900;letter-spacing:2px;text-transform:uppercase;box-shadow:0 4px 20px rgba(255,0,0,.5);border-bottom:3px solid #f44;animation:pulse-banner 2s ease-in-out infinite;line-height:1.4">ALERTA PROVA DE TESTES 25/06/2026<small style="display:block;font-size:11px;font-weight:400;letter-spacing:1px;opacity:.9;margin-top:2px">Clone offline Ambiente controlado</small></div><style>@keyframes pulse-banner{0%,100%{opacity:1}50%{opacity:.85}}body{margin-top:56px!important}header,main>header,[class*=header]{top:56px!important}</style>';
-
-// Banner CSS overlay (para paginas RSC — nao modifica DOM, evita quebrar React hydration)
-const BANNER_CSS = '<style id="banner-prova-css">body::before{content:"ALERTA PROVA DE TESTES 25/06/2026 — Clone offline Ambiente controlado";position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#f00,#c00);color:#fff;text-align:center;padding:10px 20px;font-size:16px;font-weight:900;letter-spacing:1px;text-transform:uppercase;box-shadow:0 4px 20px rgba(255,0,0,.5);border-bottom:3px solid #f44;animation:pulse-banner 2s ease-in-out infinite;line-height:1.4;display:flex;align-items:center;justify-content:center;min-height:44px}@keyframes pulse-banner{0%,100%{opacity:1}50%{opacity:.8}}body{padding-top:52px!important}</style>';
+const BANNER_DOM = '';
+const BANNER_CSS = '';
 
 // --- Database utilities ---
 const DB = {};
