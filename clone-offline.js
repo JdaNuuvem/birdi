@@ -672,11 +672,11 @@ async function apiDeposito(req, res) {
     return sendJSON(res, { error: "Deposito minimo: R$ " + min.toFixed(2) }, 400);
 
   const gw = getActiveGateway();
-  let txid, qrcodeImagem, qrcodeTexto, qrcodeBase64, gateway;
+  let txid, qrcodeImagem, qrcodeTexto, qrcodeBase64, gateway, identifier;
 
   if (gw === "paradisepags") {
     try {
-      const identifier = "DEP_" + user.id + "_" + Date.now();
+      identifier = "DEP_" + user.id + "_" + Date.now();
       const host = req.headers.host || ("localhost:" + PORT);
       const result = await paradisepagsCreateCharge({ identifier, amount: valor, user, host });
       txid = result.txid;
