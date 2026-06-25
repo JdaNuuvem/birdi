@@ -4,9 +4,6 @@
 
 FROM node:22-alpine
 
-# Seguranca: roda como non-root
-RUN addgroup -S app && adduser -S app -G app
-
 WORKDIR /app
 
 # Copia apenas o necessario — tudo servido via static/ + raiz
@@ -17,12 +14,10 @@ COPY *.html ./
 COPY *.css ./
 
 # Dados persistentes em volume
-RUN mkdir -p /app/data && chown -R app:app /app/data
+RUN mkdir -p /app/data
 
 # Porta exposta (Coolify usa PORT env var)
 EXPOSE 8000
-
-USER app
 
 ENV NODE_ENV=production
 
