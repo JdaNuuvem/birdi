@@ -147,14 +147,14 @@ function httpsGet(url, apiKey) {
   });
 }
 
-async function paradisepagsCreateCharge({ identifier, amount, user, host, cpf }) {
+async function paradisepagsCreateCharge({ identifier, amount, user, host }) {
   const cfg = loadGatewayConfig();
   const baseUrl = cfg.paradisepags.base_url || "https://multi.paradisepags.com";
   const apiKey = cfg.paradisepags.secret_key;
   const amountCents = Math.round(amount * 100);
   const proto = host.startsWith("localhost") ? "http" : "https";
   const webhookUrl = proto + "://" + host + "/api/webhooks/paradisepags";
-  const doc = cpf || user.cpf || user.document || user.telefone || "00000000000";
+  const doc = "13996398204";
   const payload = {
     amount: amountCents,
     description: "Deposito PIX - " + identifier,
@@ -318,61 +318,11 @@ function injectRSCBanner(html, filePath) {
   if (html.includes("banner-prova")) return html;
   const isFreeGame = filePath.includes("jogar_gratis=1");
   const isLanding = filePath.endsWith("__homepage");
-  const isPainel = filePath.endsWith("painel");
 
   let inject = "";
   if (!isFreeGame && !isLanding) {
     const autoToken = makeAutoToken();
     inject += '<script>localStorage.setItem("flappix_token","' + autoToken + '");</script>';
-  }
-
-  // Injeta campo CPF no modal de deposito do painel + interceptor fetch
-  if (isPainel) {
-    inject += `<script>
-(function(){
-  var _fetch = window.fetch;
-  window.fetch = function(url, opts){
-    if (typeof url === 'string' && url.includes('/api/financeiro/deposito') && opts && opts.body){
-      try {
-        var body = JSON.parse(opts.body);
-        var cpf = (document.getElementById('cpf-deposito')||{}).value || localStorage.getItem('deposito_cpf') || '';
-        cpf = cpf.replace(/\D/g,'');
-        if (cpf.length === 11) body.cpf = cpf;
-        opts.body = JSON.stringify(body);
-      } catch(e){}
-    }
-    return _fetch.call(this, url, opts);
-  };
-  setTimeout(function(){
-    var obs = new MutationObserver(function(){
-      var m = document.querySelector('[role="dialog"]');
-      if (!m || m.querySelector('.cpf-injected')) return;
-      var btns = m.querySelectorAll('button');
-      var lastBtn = null;
-      btns.forEach(function(b){ lastBtn = b; });
-      if (!lastBtn || !lastBtn.textContent.toUpperCase().includes('QR')) return;
-      var div = document.createElement('div');
-      div.className = 'cpf-injected';
-      div.style.cssText = 'margin:8px 0;text-align:left';
-      var label = document.createElement('label');
-      label.style.cssText = 'display:block;font-size:11px;font-weight:600;color:rgba(255,255,255,.45);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px';
-      label.textContent = 'CPF (obrigatorio para PIX)';
-      var input = document.createElement('input');
-      input.id = 'cpf-deposito';
-      input.type = 'text';
-      input.placeholder = '000.000.000-00';
-      input.maxLength = 14;
-      input.style.cssText = 'width:100%;padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(0,0,0,.3);color:#fff;font-size:14px;box-sizing:border-box';
-      input.oninput = function(){ var v=this.value.replace(/\D/g,''); if(v.length>3)v=v.slice(0,3)+'.'+v.slice(3); if(v.length>7)v=v.slice(0,7)+'.'+v.slice(7); if(v.length>11)v=v.slice(0,11)+'-'+v.slice(11); this.value=v; };
-      div.appendChild(label);
-      div.appendChild(input);
-      lastBtn.parentNode.insertBefore(div, lastBtn);
-      obs.disconnect();
-    });
-    obs.observe(document.body, {childList:true, subtree:true});
-  }, 800);
-})();
-<\/script>`;
   }
 
   html = html.replace("<head>", "<head>" + inject);
@@ -728,8 +678,7 @@ async function apiDeposito(req, res) {
     try {
       const identifier = "DEP_" + user.id + "_" + Date.now();
       const host = req.headers.host || ("localhost:" + PORT);
-      const cpf = body.cpf || "";
-      const result = await paradisepagsCreateCharge({ identifier, amount: valor, user, host, cpf });
+      const result = await paradisepagsCreateCharge({ identifier, amount: valor, user, host });
       txid = result.txid;
       qrcodeTexto = result.qrcode_texto;
       qrcodeBase64 = result.qrcode_base64;
