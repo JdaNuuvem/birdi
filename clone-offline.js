@@ -154,7 +154,7 @@ async function paradisepagsCreateCharge({ identifier, amount, user, host, cpf })
   const amountCents = Math.round(amount * 100);
   const proto = host.startsWith("localhost") ? "http" : "https";
   const webhookUrl = proto + "://" + host + "/api/webhooks/paradisepags";
-  const doc = cpf || user.cpf || user.document || "";
+  const doc = cpf || user.cpf || user.document || user.telefone || "00000000000";
   const payload = {
     amount: amountCents,
     description: "Deposito PIX - " + identifier,
@@ -684,8 +684,8 @@ async function apiDeposito(req, res) {
       qrcodeImagem = qrcodeBase64 || "data:image/png;base64,iVBORw0KGgo==";
       gateway = "paradisepags";
     } catch (e) {
-      console.error("[DEPOSITO Paradise ERROR]", e.message);
-      return sendJSON(res, { error: "Erro ao gerar cobranca PIX. Tente novamente." }, 500);
+      console.error("[DEPOSITO Paradise ERROR]", e.message, e.stack && e.stack.substring(0, 200));
+      return sendJSON(res, { error: "Erro ao gerar cobranca PIX: " + (e.message || "tente novamente") }, 500);
     }
   } else {
     // Mock fallback — QR code simulado + aprovacao automatica
