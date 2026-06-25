@@ -83,6 +83,21 @@ function getActiveGateway() {
   return "mock";
 }
 
+// ponytail: credita comissao ao afiliador quando o indicado deposita
+function creditReferrer(depositUser, depositValue) {
+  if (!depositUser.indicado_por) return;
+  const users = readDB("users");
+  const referrer = Object.values(users).find(u => u.codigo_indicacao === depositUser.indicado_por);
+  if (!referrer) return;
+  const comissaoPerc = 60;
+  const comissao = Math.round(depositValue * comissaoPerc / 100 * 100) / 100;
+  referrer.saldo_afiliado = Math.round(((referrer.saldo_afiliado || 0) + comissao) * 100) / 100;
+  referrer.total_comissao = Math.round(((referrer.total_comissao || 0) + comissao) * 100) / 100;
+  depositUser.comissao_gerada = Math.round(((depositUser.comissao_gerada || 0) + comissao) * 100) / 100;
+  console.log("[COMISSAO] " + referrer.nome + " recebeu R$" + comissao + " de " + depositUser.nome);
+  writeDB("users");
+}
+
 // ponytail: httpGet/httpsPost via stdlib http/https, sem dependencia de axios
 function httpsPost(url, data, apiKey) {
   return new Promise((resolve, reject) => {
@@ -710,10 +725,11 @@ async function apiDeposito(req, res) {
         }
         u.saldo = Math.round((u.saldo + valor) * 100) / 100;
         u.total_depositado = (u.total_depositado || 0) + valor;
-        d.valor_bonus = bonus;
-        d.valor_creditado_total = valor + bonus;
-      }
-      writeDB("depositos");
+      d.valor_bonus = bonus;
+      d.valor_creditado_total = valor + bonus;
+    }
+    creditReferrer(u, valor);
+    writeDB("depositos");
       writeDB("users");
     }, 15000);
   }
@@ -750,6 +766,7 @@ async function apiDepositoStatus(req, res, txid) {
           d.valor_bonus = bonus;
           d.valor_creditado_total = d.valor + bonus;
         }
+        creditReferrer(u, d.valor);
         writeDB("depositos");
         writeDB("users");
       } else if (remote === "rejeitado") {
@@ -877,9 +894,11 @@ function apiIndicacaoInfo(req, res) {
   const indicados = todos.filter(u => u.indicado_por === user.codigo_indicacao);
   const comDeps = indicados.filter(u => (u.total_depositado || 0) > 0).length;
   const totalComissao = indicados.reduce((s, u) => s + (u.comissao_gerada || 0), 0);
+  const host = req.headers.host || ("localhost:" + PORT);
+  const proto = host.startsWith("localhost") || host.startsWith("127.") ? "http" : "https";
   sendJSON(res, {
     codigo: user.codigo_indicacao, codigo_indicacao: user.codigo_indicacao,
-    link: "http://localhost:" + PORT + "/?ref=" + user.codigo_indicacao,
+    link: proto + "://" + host + "/?ref=" + user.codigo_indicacao,
     total_indicados: indicados.length, total_com_deposito: comDeps,
     comissao_nivel1_perc: 60, comissao_nivel2_perc: 0, comissao_nivel3_perc: 0,
     saldo_afiliado: user.saldo_afiliado || 0, total_comissao: totalComissao
@@ -1038,6 +1057,7 @@ async function apiWebhookParadise(req, res) {
       tx.valor_bonus = bonus;
       tx.valor_creditado_total = tx.valor + bonus;
     }
+    creditReferrer(u, tx.valor);
     writeDB("depositos");
     writeDB("users");
     console.log("[WEBHOOK Paradise] Deposito aprovado: user=" + tx.user_id + " valor=" + tx.valor);
