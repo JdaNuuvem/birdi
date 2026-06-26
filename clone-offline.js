@@ -340,22 +340,13 @@ const RSC_PAGES = {
   "/jogar": null, // resolvido via query params abaixo
 };
 
-// Inject auto-auth token into RSC pages
+// Inject scripts into RSC pages
 function injectRSCBanner(html, filePath) {
-  const isFreeGame = filePath.includes("jogar_gratis=1");
-  const isLanding = filePath.endsWith("__homepage");
   const isPainel = filePath.endsWith("painel");
-
   let inject = "";
-  if (!isFreeGame && !isLanding) {
-    const autoToken = makeAutoToken();
-    inject += '<script>if(!localStorage.getItem("flappix_token"))localStorage.setItem("flappix_token","' + autoToken + '");</script>';
-  }
-
   if (isPainel) {
     inject += PAINEL_CONFIRMAR_SCRIPT;
   }
-
   return html.replace("<head>", "<head>" + inject);
 }
 
