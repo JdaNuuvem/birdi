@@ -167,7 +167,7 @@ async function paradisepagsCreateCharge({ identifier, amount, user, host }) {
   if (resp.error || resp.status === "error") throw new Error(resp.message || "Erro ao criar cobranca");
   return {
     txid: String(resp.transaction_id || identifier),
-    qrcode_imagem: resp.qr_code_base64 ? ("data:image/png;base64," + resp.qr_code_base64) : "",
+    qrcode_imagem: resp.qr_code_base64 ? ("data:image/png;base64," + resp.qr_code_base64) : ("https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" + encodeURIComponent(resp.qr_code || "")),
     qrcode_base64: resp.qr_code_base64 || "",
     qrcode_texto: resp.qr_code || "",
     checkout_url: null,
