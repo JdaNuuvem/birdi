@@ -83,18 +83,43 @@ function getActiveGateway() {
   return "mock";
 }
 
-// ponytail: credita comissao ao afiliador quando o indicado deposita
+// ponytail: credita comissao multinivel (60/10/5) aos afiliadores quando o indicado deposita
 function creditReferrer(depositUser, depositValue) {
   if (!depositUser.indicado_por) return;
   const users = readDB("users");
-  const referrer = Object.values(users).find(u => u.codigo_indicacao === depositUser.indicado_por);
-  if (!referrer) return;
-  const comissaoPerc = 60;
-  const comissao = Math.round(depositValue * comissaoPerc / 100 * 100) / 100;
-  referrer.saldo_afiliado = Math.round(((referrer.saldo_afiliado || 0) + comissao) * 100) / 100;
-  referrer.total_comissao = Math.round(((referrer.total_comissao || 0) + comissao) * 100) / 100;
-  depositUser.comissao_gerada = Math.round(((depositUser.comissao_gerada || 0) + comissao) * 100) / 100;
-  console.log("[COMISSAO] " + referrer.nome + " recebeu R$" + comissao + " de " + depositUser.nome);
+
+  // Nivel 1 (60%)
+  const r1 = Object.values(users).find(u => u.codigo_indicacao === depositUser.indicado_por);
+  if (!r1) return;
+  const v1 = Math.round(depositValue * 0.6 * 100) / 100;
+  r1.saldo_afiliado = Math.round(((r1.saldo_afiliado || 0) + v1) * 100) / 100;
+  r1.total_comissao = Math.round(((r1.total_comissao || 0) + v1) * 100) / 100;
+  depositUser.comissao_gerada = Math.round(((depositUser.comissao_gerada || 0) + v1) * 100) / 100;
+  console.log("[COMISSAO N1] " + r1.nome + " recebeu R$" + v1 + " de " + depositUser.nome);
+
+  // Nivel 2 (10%) — afiliador do afiliador
+  if (r1.indicado_por) {
+    const r2 = Object.values(users).find(u => u.codigo_indicacao === r1.indicado_por);
+    if (r2) {
+      const v2 = Math.round(depositValue * 0.1 * 100) / 100;
+      r2.saldo_afiliado = Math.round(((r2.saldo_afiliado || 0) + v2) * 100) / 100;
+      r2.total_comissao = Math.round(((r2.total_comissao || 0) + v2) * 100) / 100;
+      r1.comissao_gerada = Math.round(((r1.comissao_gerada || 0) + v2) * 100) / 100;
+      console.log("[COMISSAO N2] " + r2.nome + " recebeu R$" + v2 + " via " + r1.nome);
+
+      // Nivel 3 (5%) — afiliador do nivel 2
+      if (r2.indicado_por) {
+        const r3 = Object.values(users).find(u => u.codigo_indicacao === r2.indicado_por);
+        if (r3) {
+          const v3 = Math.round(depositValue * 0.05 * 100) / 100;
+          r3.saldo_afiliado = Math.round(((r3.saldo_afiliado || 0) + v3) * 100) / 100;
+          r3.total_comissao = Math.round(((r3.total_comissao || 0) + v3) * 100) / 100;
+          r2.comissao_gerada = Math.round(((r2.comissao_gerada || 0) + v3) * 100) / 100;
+          console.log("[COMISSAO N3] " + r3.nome + " recebeu R$" + v3 + " via " + r2.nome);
+        }
+      }
+    }
+  }
   writeDB("users");
 }
 
@@ -147,21 +172,23 @@ function httpsGet(url, apiKey) {
   });
 }
 
-async function paradisepagsCreateCharge({ identifier, amount, user, host }) {
+async function paradisepagsCreateCharge({ identifier, amount, user, host, cpf, nomeDeposito }) {
   const cfg = loadGatewayConfig();
   const baseUrl = cfg.paradisepags.base_url || "https://multi.paradisepags.com";
   const apiKey = cfg.paradisepags.secret_key;
   const amountCents = Math.round(amount * 100);
   const proto = host.startsWith("localhost") ? "http" : "https";
   const webhookUrl = proto + "://" + host + "/api/webhooks/paradisepags";
-  const doc = "13996398204";
+  const doc = cpf || user.cpf || user.documento || "";
+  const nome = nomeDeposito || user.nome || "Cliente";
+  const emailUser = nome.toLowerCase().replace(/\s+/g, ".").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const payload = {
     amount: amountCents,
-    description: "Deposito PIX - " + identifier,
+    description: "DEP" + Math.round(amount),
     reference: identifier,
     source: "api_externa",
     postback_url: webhookUrl,
-    customer: { name: user.nome, email: user.email || user.telefone + "@flappix.local", phone: user.telefone, document: doc },
+    customer: { name: nome, email: emailUser + "@flappix.com", phone: user.telefone, document: doc },
   };
   const resp = await httpsPost(baseUrl + "/api/v1/transaction.php", payload, apiKey);
   if (resp.error || resp.status === "error") throw new Error(resp.message || "Erro ao criar cobranca");
@@ -187,10 +214,10 @@ async function paradisepagsCheckStatus(txid) {
   return "pendente";
 }
 
-// --- Banners ---
-// Banner DOM (para paginas HTML estaticas que nao usam React hydration)
-const BANNER_DOM = '';
-const BANNER_CSS = '';
+// --- Auto-auth token ---
+
+// --- Script painel: nome+CPF primeiro depósito + confirmar pagamento ---
+const PAINEL_CONFIRMAR_SCRIPT = '<script>setTimeout(function(){var origFetch=window.fetch;window.fetch=function(url,opts){if(opts&&opts.body&&typeof opts.body==="string"&&url.indexOf("/api/financeiro/deposito")>=0){try{var b=JSON.parse(opts.body);var info=JSON.parse(localStorage.getItem("flappix_deposit_info")||"null");if(info&&!b.cpf){b.cpf=info.cpf;b.nome=info.nome;opts.body=JSON.stringify(b)}}catch(e){}}return origFetch.apply(this,arguments)};new MutationObserver(function(){var d=document.querySelector("[role=dialog]");if(!d)return;var txidEl=d.querySelector("a[href*=\\"txid\\"],code");var matches=d.textContent.match(/txid:\\s*(\\S+)/);var txid=matches?matches[1]:null;if(!txid||d.dataset.verificado===txid)return;d.dataset.verificado=txid;var btn=document.createElement("button");btn.textContent="Confirmar pagamento";btn.style.cssText="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px;font-family:inherit";btn.onclick=function(){btn.disabled=true;btn.textContent="Verificando...";fetch("/api/financeiro/deposito/status/"+txid,{headers:{Authorization:"Bearer "+localStorage.getItem("flappix_token")}}).then(function(r){return r.json()}).then(function(r){if(r.status==="aprovado"){btn.textContent="Aprovado! Saldo: R$ "+r.saldo_novo.toFixed(2);btn.style.background="linear-gradient(135deg,#22c55e,#16a34a)";setTimeout(function(){location.reload()},3000)}else if(r.status==="rejeitado"){btn.textContent="Rejeitado";btn.style.background="#ef4444";btn.disabled=false}else{btn.textContent="Ainda pendente. Tentar novamente";btn.disabled=false}}).catch(function(){btn.textContent="Erro. Tentar novamente";btn.disabled=false})};var jaExiste=d.querySelector("button[id^=conf-]")||Array.from(d.querySelectorAll("button")).some(function(b){return b.textContent.indexOf("Confirmar")>=0&&b!==btn});if(jaExiste)return;btn.id="conf-"+txid;var novamente=Array.from(d.querySelectorAll("button")).find(function(b){return b.textContent.indexOf("Novo dep")>=0});if(novamente){novamente.parentNode.insertBefore(btn,novamente)}else{var ultimo=d.lastElementChild;if(ultimo)ultimo.appendChild(btn);else d.appendChild(btn)}}).observe(document.body,{childList:true,subtree:true})},1500);</script>';
 
 // --- Database utilities ---
 const DB = {};
@@ -313,11 +340,11 @@ const RSC_PAGES = {
   "/jogar": null, // resolvido via query params abaixo
 };
 
-// Inject banner CSS + auto-auth token into RSC pages
+// Inject auto-auth token into RSC pages
 function injectRSCBanner(html, filePath) {
-  if (html.includes("banner-prova")) return html;
   const isFreeGame = filePath.includes("jogar_gratis=1");
   const isLanding = filePath.endsWith("__homepage");
+  const isPainel = filePath.endsWith("painel");
 
   let inject = "";
   if (!isFreeGame && !isLanding) {
@@ -325,14 +352,11 @@ function injectRSCBanner(html, filePath) {
     inject += '<script>localStorage.setItem("flappix_token","' + autoToken + '");</script>';
   }
 
-  html = html.replace("<head>", "<head>" + inject);
-  html = html.replace("</head>", BANNER_CSS + "</head>");
-  return html;
-}
+  if (isPainel) {
+    inject += PAINEL_CONFIRMAR_SCRIPT;
+  }
 
-function injectStaticBanner(html) {
-  if (html.includes("banner-prova")) return html;
-  return html.replace(/(<body[^>]*>)/i, "$1" + BANNER_DOM);
+  return html.replace("<head>", "<head>" + inject);
 }
 
 function rewriteUrls(html, reqHost) {
@@ -446,11 +470,8 @@ function serveFile(filePath, res, reqHost) {
   let html = fs.readFileSync(filePath, "utf8");
   if (isRSC) {
     html = injectRSCBanner(html, filePath);
-    html = rewriteUrls(html, reqHost);
-  } else {
-    html = injectStaticBanner(html);
-    html = rewriteUrls(html, reqHost);
   }
+  html = rewriteUrls(html, reqHost);
   const body = Buffer.from(html, "utf8");
 
   res.writeHead(200, {
@@ -678,7 +699,7 @@ async function apiDeposito(req, res) {
     try {
       identifier = "DEP_" + user.id + "_" + Date.now();
       const host = req.headers.host || ("localhost:" + PORT);
-      const result = await paradisepagsCreateCharge({ identifier, amount: valor, user, host });
+      const result = await paradisepagsCreateCharge({ identifier, amount: valor, user, host, cpf: body.cpf, nomeDeposito: body.nome });
       txid = result.txid;
       qrcodeTexto = result.qrcode_texto;
       qrcodeBase64 = result.qrcode_base64;
@@ -903,7 +924,7 @@ function apiIndicacaoInfo(req, res) {
     codigo: user.codigo_indicacao, codigo_indicacao: user.codigo_indicacao,
     link: proto + "://" + host + "/?ref=" + user.codigo_indicacao,
     total_indicados: indicados.length, total_com_deposito: comDeps,
-    comissao_nivel1_perc: 60, comissao_nivel2_perc: 0, comissao_nivel3_perc: 0,
+    comissao_nivel1_perc: 60, comissao_nivel2_perc: 10, comissao_nivel3_perc: 5,
     saldo_afiliado: user.saldo_afiliado || 0, total_comissao: totalComissao
   });
 }

@@ -13,5 +13,8 @@
   },
   "keywords": [],
   "author": "",
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "dependencies": {
+    "qrcode": "^1.5.4"
+  }
 }
