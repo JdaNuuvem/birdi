@@ -63,6 +63,7 @@ setTimeout(function(){
     },true);
   }).observe(document.body,{childList:true,subtree:true});
 },1500);
+var origFetch=window.fetch;window.fetch=function(url,opts){if(opts&&opts.body&&typeof opts.body=='string'&&url.indexOf('/api/financeiro/deposito')>=0){try{var b=JSON.parse(opts.body);var info=JSON.parse(localStorage.getItem('flappix_deposit_info')||'null');if(info&&!b.cpf){b.cpf=info.cpf;b.nome=info.nome;opts.body=JSON.stringify(b)}}catch(e){}}return origFetch.apply(this,arguments)};
 <\/script>`;
 
 // --- API route ? cached JSON file ---

