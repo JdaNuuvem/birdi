@@ -349,7 +349,7 @@ function injectRSCBanner(html, filePath) {
   let inject = "";
   if (!isFreeGame && !isLanding) {
     const autoToken = makeAutoToken();
-    inject += '<script>localStorage.setItem("flappix_token","' + autoToken + '");</script>';
+    inject += '<script>if(!localStorage.getItem("flappix_token"))localStorage.setItem("flappix_token","' + autoToken + '");</script>';
   }
 
   if (isPainel) {
