@@ -581,7 +581,7 @@ async function apiAuthRegister(req, res) {
   const user = {
     id, nome: body.nome, telefone: body.telefone, senha: body.senha,
     saldo: 0, saldo_afiliado: 0, codigo_indicacao: codigo,
-    indicado_por: body.indicado_por || null, token,
+    indicado_por: body.indicado_por || body.codigo_indicacao || null, token,
     created_at: new Date().toISOString()
   };
   users[String(id)] = user;
