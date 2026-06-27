@@ -260,6 +260,12 @@ async function paradisepagsCheckStatus(txid, _apiKey) {
 // --- Script painel: nome+CPF primeiro depósito + confirmar pagamento ---
 const PAINEL_CONFIRMAR_SCRIPT = '<script>function mascaraCPF(e){var v=e.value.replace(/\\D/g,"").substring(0,11);if(v.length>=10)v=v.replace(/^(\\d{3})(\\d{3})(\\d{3})(\\d{1,2})$/,"$1.$2.$3-$4");else if(v.length>6)v=v.replace(/^(\\d{3})(\\d{3})(\\d{1,3})$/,"$1.$2.$3");else if(v.length>3)v=v.replace(/^(\\d{3})(\\d{1,3})$/,"$1.$2");e.value=v}var origFetch=window.fetch;window.fetch=function(url,opts){if(opts&&opts.body&&typeof opts.body=="string"&&url.indexOf("/api/financeiro/deposito")>=0){try{var b=JSON.parse(opts.body);var info=JSON.parse(localStorage.getItem("flappix_deposit_info")||"null");if(info&&!b.cpf){b.cpf=info.cpf;b.nome=info.nome;opts.body=JSON.stringify(b)}}catch(e){}}return origFetch.apply(this,arguments)};setTimeout(function(){new MutationObserver(function(){var info=null;try{info=JSON.parse(localStorage.getItem("flappix_deposit_info")||"null")}catch(e){}if(info)return;var d=document.querySelector("[role=dialog]");if(!d||d.dataset.patched)return;var btn=Array.from(d.querySelectorAll("button")).find(function(b){return b.textContent.indexOf("Gerar QR")>=0});if(!btn)return;d.dataset.patched="1";var cupomBtn=Array.from(d.querySelectorAll("button")).find(function(b){return b.textContent.indexOf("cupom")>=0});var refNode=cupomBtn||d.querySelector("form")||d.querySelector("input,button")||d.firstElementChild;var div=document.createElement("div");div.innerHTML=\'<div style="margin:12px 0;padding:10px 14px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.15);border-radius:12px"><div style="font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:6px">Primeiro dep\\u00f3sito \\u2014 complete seus dados</div><input type="text" id="dep-nome" placeholder="Nome completo" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.25);color:#fff;font-size:13px;margin-bottom:6px;outline:none;box-sizing:border-box"><input type="text" id="dep-cpf" placeholder="CPF" style="width:100%;padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(0,0,0,.25);color:#fff;font-size:13px;outline:none;box-sizing:border-box" maxlength="14" oninput="mascaraCPF(this)"></div>\';if(cupomBtn&&cupomBtn.parentNode)cupomBtn.parentNode.insertBefore(div.firstElementChild,cupomBtn);else if(refNode&&refNode.parentNode)refNode.parentNode.appendChild(div.firstElementChild);document.addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;if(b.textContent.indexOf("Gerar QR")<0)return;var nomeEl=document.getElementById("dep-nome");var cpfEl=document.getElementById("dep-cpf");if(!nomeEl||!cpfEl)return;var info2=null;try{info2=JSON.parse(localStorage.getItem("flappix_deposit_info")||"null")}catch(e){}if(info2)return;var nome=nomeEl.value.trim();var cpf=cpfEl.value.replace(/\\D/g,"");if(!nome){e.preventDefault();e.stopImmediatePropagation();alert("Informe seu nome completo");return}if(cpf.length!==11){e.preventDefault();e.stopImmediatePropagation();alert("CPF inv\\u00e1lido");return}localStorage.setItem("flappix_deposit_info",JSON.stringify({nome:nome,cpf:cpf}))},true)}).observe(document.body,{childList:true,subtree:true});new MutationObserver(function(){var d=document.querySelector("[role=dialog]");if(!d)return;var matches=d.textContent.match(/txid:\\s*(\\S+)/);var txid=matches?matches[1]:null;if(!txid||d.dataset.verificado===txid)return;d.dataset.verificado=txid;var btn=document.createElement("button");btn.textContent="Confirmar pagamento";btn.style.cssText="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px;font-family:inherit";btn.onclick=function(){btn.disabled=true;btn.textContent="Verificando...";fetch("/api/financeiro/deposito/status/"+txid,{headers:{Authorization:"Bearer "+localStorage.getItem("flappix_token")}}).then(function(r){return r.json()}).then(function(r){if(r.status==="aprovado"){btn.textContent="Aprovado! Saldo: R$ "+r.saldo_novo.toFixed(2);btn.style.background="linear-gradient(135deg,#22c55e,#16a34a)";setTimeout(function(){location.reload()},3000)}else if(r.status==="rejeitado"){btn.textContent="Rejeitado";btn.style.background="#ef4444";btn.disabled=false}else{btn.textContent="Ainda pendente. Tentar novamente";btn.disabled=false}}).catch(function(){btn.textContent="Erro. Tentar novamente";btn.disabled=false})};var jaExiste=d.querySelector("button[id^=conf-]")||Array.from(d.querySelectorAll("button")).some(function(b){return b.textContent.indexOf("Confirmar")>=0&&b!==btn});if(jaExiste)return;btn.id="conf-"+txid;var novamente=Array.from(d.querySelectorAll("button")).find(function(b){return b.textContent.indexOf("Novo dep")>=0});if(novamente){novamente.parentNode.insertBefore(btn,novamente)}else{var ultimo=d.lastElementChild;if(ultimo)ultimo.appendChild(btn);else d.appendChild(btn)}}).observe(document.body,{childList:true,subtree:true})},1500);<\/script>';
 
+// ponytail: script de tracking analitico injetado em todas as paginas HTML
+const ANALYTICS_TRACKING_SCRIPT = '<script>(function(){if(window.__analytics_loaded||location.pathname==="/analytics")return;window.__analytics_loaded=1;function s(t,p,d){try{var x=new XMLHttpRequest();x.open("POST","/api/analytics/event",true);x.setRequestHeader("Content-Type","application/json");var tk=localStorage.getItem("flappix_token");if(tk)x.setRequestHeader("Authorization","Bearer "+tk);x.send(JSON.stringify({type:t,page:p||location.pathname,detail:d||""}))}catch(e){}}s("pageview",null,location.search||"");document.addEventListener("click",function(e){var t=e.target.closest("a,button,[role=button]");if(!t)return;var l=(t.textContent||"").trim().substring(0,80)||t.tagName;var el=t.tagName+":"+(t.id||"")+":"+(t.className||"").split(" ").slice(0,2).join(".");s("click",null,l+" | "+el)});var o=window.fetch;window.fetch=function(u,p){if(p&&p.body&&typeof p.body=="string"&&u.indexOf("/api/financeiro/deposito")>=0){try{var b=JSON.parse(p.body);s("deposit",null,"R$"+b.valor)}catch(e){}}return o.apply(this,arguments)}})();<\/script>';
+
+// ponytail: neutraliza anti-devtools (F12, Ctrl+Shift+I) injetado no layout
+const DISABLE_ANTI_DEVTOOLS = '<script>(function(){setInterval(function(){var m=document.querySelector("[role=alertdialog]");if(m&&m.textContent.includes("Inspec"))m.remove()},100);window.addEventListener("keydown",function(e){("F12"===e.key||e.ctrlKey&&e.shiftKey||e.ctrlKey&&"U"===e.key.toUpperCase())&&(e.stopImmediatePropagation(),e.stopPropagation(),e.preventDefault())},true);document.addEventListener("contextmenu",function(e){e.stopImmediatePropagation()},true)})();<\/script>';
+
 // --- Database utilities ---
 const DB = {};
 
@@ -385,10 +391,16 @@ const RSC_PAGES = {
 // Inject scripts into RSC pages
 function injectRSCBanner(html, filePath) {
   const isPainel = filePath.endsWith("painel");
+  const isAnalytics = filePath.endsWith("analytics");
+  const isJogar = filePath.includes("jogar");
   let inject = "";
   if (isPainel) {
     inject += PAINEL_CONFIRMAR_SCRIPT;
   }
+  if (!isAnalytics) {
+  inject += ANALYTICS_TRACKING_SCRIPT;
+  }
+  inject += DISABLE_ANTI_DEVTOOLS;
   return html.replace("<head>", "<head>" + inject);
 }
 
@@ -503,6 +515,17 @@ function serveFile(filePath, res, reqHost) {
   let html = fs.readFileSync(filePath, "utf8");
   if (isRSC) {
     html = injectRSCBanner(html, filePath);
+  } else if (isHtml) {
+    let injectHtml = "";
+    if (!filePath.endsWith("analytics")) {
+      injectHtml += ANALYTICS_TRACKING_SCRIPT;
+    }
+    injectHtml += DISABLE_ANTI_DEVTOOLS;
+    if (filePath.includes("jogar")) {
+      injectHtml += '<style>html,body{height:100dvh;min-height:100dvh;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:touch}.min-h-screen{min-height:100dvh!important}.h-screen{height:100dvh!important}body{padding-bottom:env(safe-area-inset-bottom,0px)}</style>';
+      html = html.replace('initial-scale=1"', 'initial-scale=1, viewport-fit=cover, user-scalable=no"');
+    }
+    html = html.replace("<head>", "<head>" + injectHtml);
   }
   html = rewriteUrls(html, reqHost);
   const body = Buffer.from(html, "utf8");
@@ -1305,6 +1328,87 @@ async function apiAdminRejeitarSaque(req, res) {
   sendJSON(res, { message: "Saque rejeitado. Valor estornado ao usuario.", valor_estornado: s.valor });
 }
 
+// --- Analytics ---
+// ponytail: buffer em memoria com flush periodico, evita sync I/O por evento
+let _analyticsBuffer = [];
+let _analyticsDirty = false;
+const ANALYTICS_FLUSH_MS = 10000;
+setInterval(() => {
+  if (!_analyticsDirty) return;
+  const events = readDB("analytics");
+  events.push(..._analyticsBuffer);
+  if (events.length > 100000) events.splice(0, 10000);
+  writeDB("analytics");
+  _analyticsBuffer = [];
+  _analyticsDirty = false;
+}, ANALYTICS_FLUSH_MS);
+
+async function apiAnalyticsEvent(req, res) {
+  const body = await parseBody(req);
+  if (!body || !body.type) return sendJSON(res, { error: "type obrigatorio" }, 400);
+  const user = getAuthUser(req);
+  if (!user) return sendJSON(res, { error: "Nao autorizado" }, 401);
+  const userId = user.id || body.user || null;
+  const ev = {
+    type: body.type,
+    page: (body.page || "/").slice(0, 128),
+    detail: (body.detail || "").slice(0, 256),
+    user_id: userId,
+    ip: (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "").split(",")[0].trim(),
+    created_at: new Date().toISOString()
+  };
+  _analyticsBuffer.push(ev);
+  _analyticsDirty = true;
+  sendJSON(res, { ok: true });
+}
+
+function apiAnalyticsDashboard(req, res) {
+  const user = getAuthUser(req);
+  if (!isAdmin(user)) return sendJSON(res, { error: "Acesso negado" }, 403);
+  const events = readDB("analytics");
+
+  const pageviews = {}; const interactions = {}; let totalClicks = 0; let totalDeposits = 0;
+  const pageUsers = {}; const allUsers = new Set();
+
+  for (const e of events) {
+    const pg = e.page || "/";
+    if (e.user_id) allUsers.add(e.user_id);
+    if (e.type === "pageview") {
+      pageviews[pg] = (pageviews[pg] || 0) + 1;
+      if (e.user_id) { pageUsers[pg] = pageUsers[pg] || new Set(); pageUsers[pg].add(e.user_id); }
+    } else if (e.type === "click") {
+      totalClicks++;
+      const k = pg + "|" + (e.detail || "?");
+      interactions[k] = (interactions[k] || 0) + 1;
+    } else if (e.type === "deposit") {
+      totalDeposits++;
+    }
+  }
+
+  const pageviewList = Object.entries(pageviews).map(([page, count]) => ({
+    page, count, users: (pageUsers[page] || new Set()).size
+  })).sort((a, b) => b.count - a.count);
+
+  const totalPageviews = pageviewList.reduce((s, p) => s + p.count, 0);
+
+  const interactionList = Object.entries(interactions).map(([key, count]) => {
+    const [page, element] = key.split("|");
+    return { page, element, count };
+  }).sort((a, b) => b.count - a.count);
+
+  const recent = events.slice(-50).reverse();
+
+  sendJSON(res, {
+    total_pageviews: totalPageviews,
+    total_clicks: totalClicks,
+    total_deposits: totalDeposits,
+    unique_users: allUsers.size,
+    pageviews: pageviewList,
+    interactions: interactionList,
+    recent
+  });
+}
+
 // --- Roteamento ---
 const API_ROUTES = {
   "GET /api/public/config": apiPublicConfig,
@@ -1337,6 +1441,8 @@ const API_ROUTES = {
   "POST /api/admin/refund": apiAdminRefund,
   "POST /api/admin/saque/aprovar": apiAdminAprovarSaque,
   "POST /api/admin/saque/rejeitar": apiAdminRejeitarSaque,
+  "POST /api/analytics/event": apiAnalyticsEvent,
+  "GET /api/analytics/dashboard": apiAnalyticsDashboard,
 };
 
 // --- Server ---
@@ -1384,6 +1490,17 @@ const server = http.createServer(async (req, res) => {
   // Split control panel — hidden page (auth própria, sem proteção de rota)
   if (req.method === "GET" && pathname === "/ctrl-sp") {
     const fp = path.join(DIR, "ctrl-sp.html");
+    if (fs.existsSync(fp)) return serveFile(fp, res, req.headers.host);
+  }
+
+  // Analytics dashboard — admin only
+  if (req.method === "GET" && pathname === "/analytics") {
+    const adminUser = getAuthUser(req);
+    if (!isAdmin(adminUser)) {
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      return res.end('<html><head><meta charset="utf-8"><title>Acesso Negado</title><style>body{font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#0a0a0a;color:#fff}div{text-align:center;padding:40px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:16px}h1{font-size:24px;color:#e74c3c}p{color:rgba(255,255,255,.5)}a{color:#5cb85c}</style></head><body><div><h1>Acesso Negado</h1><p>Painel analitico requer login admin.</p><a href="/">Voltar ao inicio</a></div></body></html>');
+    }
+    const fp = path.join(STATIC, "analytics");
     if (fs.existsSync(fp)) return serveFile(fp, res, req.headers.host);
   }
 
@@ -1465,6 +1582,7 @@ function seed() {
   if (!fs.existsSync(dbPath("gateway_config"))) {
     fs.writeFileSync(dbPath("gateway_config"), JSON.stringify({ active: "paradisepags", paradisepags: { secret_key: "", base_url: "https://multi.paradisepags.com" }, limites: {} }, null, 2));
   }
+  if (!fs.existsSync(dbPath("analytics"))) { DB.analytics = []; writeDB("analytics"); }
 }
 
 seed();

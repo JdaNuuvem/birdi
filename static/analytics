@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Painel Analitico — Flappix</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:#0a0a0a;color:#e0e0e0;min-height:100vh}
+header{background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.08);padding:16px 24px;display:flex;justify-content:space-between;align-items:center}
+header h1{font-size:18px;font-weight:600;color:#fff}
+header span{font-size:11px;color:rgba(255,255,255,.4)}
+main{padding:24px;max-width:1400px;margin:0 auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:32px}
+.card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px}
+.card .label{font-size:11px;text-transform:uppercase;color:rgba(255,255,255,.4);letter-spacing:.5px;margin-bottom:6px}
+.card .value{font-size:32px;font-weight:700;color:#fff}
+.card.green{border-color:rgba(74,222,128,.2);background:rgba(74,222,128,.05)}
+.card.blue{border-color:rgba(96,165,250,.2);background:rgba(96,165,250,.05)}
+.card.yellow{border-color:rgba(250,204,21,.2);background:rgba(250,204,21,.05)}
+.card.red{border-color:rgba(248,113,113,.2);background:rgba(248,113,113,.05)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:24px}
+.panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px}
+.panel h2{font-size:14px;font-weight:600;margin-bottom:16px;color:rgba(255,255,255,.7)}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;text-transform:uppercase;color:rgba(255,255,255,.4);padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.06)}
+td{font-size:13px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.04)}
+tr:hover td{background:rgba(255,255,255,.02)}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600}
+.badge.pageview{background:rgba(96,165,250,.15);color:#60a5fa}
+.badge.click{background:rgba(250,204,21,.15);color:#facc15}
+.badge.deposit{background:rgba(74,222,128,.15);color:#4ade80}
+.badge.other{background:rgba(255,255,255,.1);color:rgba(255,255,255,.5)}
+.live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#4ade80;margin-right:6px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.empty{text-align:center;color:rgba(255,255,255,.2);padding:32px;font-size:13px}
+.refresh{color:rgba(255,255,255,.3);font-size:11px}
+</style>
+</head>
+<body>
+<header>
+  <div><span class="live-dot"></span><h1 style="display:inline">Painel Analitico</h1></div>
+  <span id="clock">—</span>
+</header>
+<main>
+  <div class="cards">
+    <div class="card blue"><div class="label">Pageviews</div><div class="value" id="total-pageviews">0</div></div>
+    <div class="card yellow"><div class="label">Interacoes</div><div class="value" id="total-clicks">0</div></div>
+    <div class="card green"><div class="label">Depositos</div><div class="value" id="total-deposits">0</div></div>
+    <div class="card red"><div class="label">Usuarios Unicos</div><div class="value" id="unique-users">0</div></div>
+  </div>
+  <div class="grid">
+    <div class="panel">
+      <h2>Paginas Mais Visitadas</h2>
+      <div id="pageviews-table"></div>
+      <div class="empty" id="pageviews-empty">Nenhum dado ainda</div>
+    </div>
+    <div class="panel">
+      <h2>Interacoes por Pagina</h2>
+      <div id="interactions-table"></div>
+      <div class="empty" id="interactions-empty">Nenhum dado ainda</div>
+    </div>
+    <div class="panel" style="grid-column:1/-1">
+      <h2>Eventos Recentes</h2>
+      <div id="recent-events"></div>
+      <div class="empty" id="events-empty">Nenhum evento ainda</div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:24px" class="refresh">Atualizacao automatica a cada 10s — <span id="last-update"></span></div>
+</main>
+<script>
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function badge(type){if(type==='pageview')return'badge pageview';if(type==='click')return'badge click';if(type==='deposit')return'badge deposit';return'badge other'}
+function fmt(n){return n.toLocaleString('pt-BR')}
+function timeAgo(ts){var d=(Date.now()-new Date(ts).getTime())/1000;if(d<60)return Math.floor(d)+'s';if(d<3600)return Math.floor(d/60)+'min';if(d<86400)return Math.floor(d/3600)+'h';return Math.floor(d/86400)+'d'}
+function pageName(e){var p=e.page||'/';return p==='/'?'Homepage':p==='/painel'?'Painel':p==='/jogar'?'Jogar':esc(p)}
+function load(){
+  document.getElementById('clock').textContent=new Date().toLocaleString('pt-BR');
+  document.getElementById('last-update').textContent=new Date().toLocaleTimeString('pt-BR');
+  fetch('/api/analytics/dashboard').then(function(r){return r.json()}).then(function(d){
+    document.getElementById('total-pageviews').textContent=fmt(d.total_pageviews||0);
+    document.getElementById('total-clicks').textContent=fmt(d.total_clicks||0);
+    document.getElementById('total-deposits').textContent=fmt(d.total_deposits||0);
+    document.getElementById('unique-users').textContent=fmt(d.unique_users||0);
+
+    var pg=d.pageviews||[];
+    var pgt=document.getElementById('pageviews-table');
+    var pge=document.getElementById('pageviews-empty');
+    if(pg.length){pge.style.display='none';pgt.innerHTML='<table><tr><th>Pagina</th><th class="num">Views</th><th class="num">Usuarios</th></tr>'+pg.map(function(r){return'<tr><td>'+pageName(r)+'</td><td class="num">'+fmt(r.count)+'</td><td class="num">'+fmt(r.users||0)+'</td></tr>'}).join('')+'</table>'}else{pge.style.display='';pgt.innerHTML=''}
+
+    var it=d.interactions||[];
+    var itt=document.getElementById('interactions-table');
+    var ite=document.getElementById('interactions-empty');
+    if(it.length){ite.style.display='none';itt.innerHTML='<table><tr><th>Pagina</th><th>Elemento</th><th class="num">Cliques</th></tr>'+it.map(function(r){return'<tr><td>'+pageName(r)+'</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(r.element||'?')+'</td><td class="num">'+fmt(r.count)+'</td></tr>'}).join('')+'</table>'}else{ite.style.display='';itt.innerHTML=''}
+
+    var ev=d.recent||[];
+    var et=document.getElementById('recent-events');
+    var ee=document.getElementById('events-empty');
+    if(ev.length){ee.style.display='none';et.innerHTML='<table><tr><th>Tipo</th><th>Pagina</th><th>Detalhe</th><th>Usuario</th><th>Quando</th></tr>'+ev.map(function(e){var t=e.type||'?';return'<tr><td><span class="'+badge(t)+'">'+t+'</span></td><td>'+pageName(e)+'</td><td>'+esc(e.detail||'-')+'</td><td>'+esc(e.user||'anon')+'</td><td>'+timeAgo(e.created_at)+'</td></tr>'}).join('')+'</table>'}else{ee.style.display='';et.innerHTML=''}
+  }).catch(function(){});
+}
+load();setInterval(load,10000);
+</script>
+</body>
+</html>
